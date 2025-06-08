@@ -1,22 +1,30 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from "@nestjs/common";
+import { PrismaClient } from "@prisma/client";
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
     super({
-      log: ['query', 'info', 'warn', 'error'],
+      log: ["query", "info", "warn", "error"],
     });
   }
 
   async onModuleInit() {
     try {
       await this.$connect();
-      this.logger.log('Erfolgreich mit der Datenbank verbunden');
+      this.logger.log("Erfolgreich mit der Datenbank verbunden");
     } catch (error) {
-      this.logger.error('Datenbankverbindung fehlgeschlagen', error);
+      this.logger.error("Datenbankverbindung fehlgeschlagen", error);
       throw error;
     }
   }
@@ -24,9 +32,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleDestroy() {
     try {
       await this.$disconnect();
-      this.logger.log('Datenbankverbindung geschlossen');
+      this.logger.log("Datenbankverbindung geschlossen");
     } catch (error) {
-      this.logger.error('Fehler beim Schließen der Datenbankverbindung', error);
+      this.logger.error("Fehler beim Schließen der Datenbankverbindung", error);
     }
   }
 
@@ -46,10 +54,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         },
       });
 
-      this.logger.log(`${deleted.count} alte Datenpunkte gelöscht (älter als ${retentionDays} Tage)`);
+      this.logger.log(
+        `${deleted.count} alte Datenpunkte gelöscht (älter als ${retentionDays} Tage)`,
+      );
       return deleted.count;
     } catch (error) {
-      this.logger.error('Fehler beim Bereinigen alter Daten', error);
+      this.logger.error("Fehler beim Bereinigen alter Daten", error);
       throw error;
     }
   }
@@ -68,14 +78,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       `;
 
       if (Array.isArray(duplicates) && duplicates.length > 0) {
-        this.logger.warn(`${duplicates.length} doppelte Einträge in historischen Daten gefunden`);
+        this.logger.warn(
+          `${duplicates.length} doppelte Einträge in historischen Daten gefunden`,
+        );
         return false;
       }
 
-      this.logger.log('Datenbankintegrität ist in Ordnung');
+      this.logger.log("Datenbankintegrität ist in Ordnung");
       return true;
     } catch (error) {
-      this.logger.error('Fehler bei der Integritätsprüfung', error);
+      this.logger.error("Fehler bei der Integritätsprüfung", error);
       return false;
     }
   }

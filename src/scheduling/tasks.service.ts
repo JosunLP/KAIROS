@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { ConfigService } from '@nestjs/config';
-import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
-import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
-import { MlPredictionService } from '../ml-prediction/ml-prediction.service';
-import { PrismaService } from '../persistence/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { ConfigService } from "@nestjs/config";
+import { DataIngestionService } from "../data-ingestion/data-ingestion.service";
+import { AnalysisEngineService } from "../analysis-engine/analysis-engine.service";
+import { MlPredictionService } from "../ml-prediction/ml-prediction.service";
+import { PrismaService } from "../persistence/prisma.service";
 
 @Injectable()
 export class TasksService {
@@ -21,22 +21,24 @@ export class TasksService {
   /**
    * Holt aktuelle Marktdaten alle 15 Minuten (während Handelszeiten)
    */
-  @Cron('*/15 * * * *', {
-    name: 'fetchLatestData',
-    timeZone: 'Europe/Berlin',
+  @Cron("*/15 * * * *", {
+    name: "fetchLatestData",
+    timeZone: "Europe/Berlin",
   })
   async handleDataIngestion() {
     if (!this.isMarketHours()) {
-      this.logger.debug('Außerhalb der Handelszeiten - Datenerfassung übersprungen');
+      this.logger.debug(
+        "Außerhalb der Handelszeiten - Datenerfassung übersprungen",
+      );
       return;
     }
 
     try {
-      this.logger.log('Starte geplante Datenerfassung');
+      this.logger.log("Starte geplante Datenerfassung");
       await this.dataIngestion.fetchLatestDataForAllTrackedStocks();
-      this.logger.log('Geplante Datenerfassung abgeschlossen');
+      this.logger.log("Geplante Datenerfassung abgeschlossen");
     } catch (error) {
-      this.logger.error('Fehler bei geplanter Datenerfassung', error);
+      this.logger.error("Fehler bei geplanter Datenerfassung", error);
     }
   }
 
@@ -44,84 +46,87 @@ export class TasksService {
    * Berechnet technische Indikatoren jede Stunde
    */
   @Cron(CronExpression.EVERY_HOUR, {
-    name: 'calculateIndicators',
-    timeZone: 'Europe/Berlin',
+    name: "calculateIndicators",
+    timeZone: "Europe/Berlin",
   })
   async handleTechnicalAnalysis() {
     try {
-      this.logger.log('Starte geplante technische Analyse');
+      this.logger.log("Starte geplante technische Analyse");
       await this.analysisEngine.enrichLatestData();
-      this.logger.log('Geplante technische Analyse abgeschlossen');
+      this.logger.log("Geplante technische Analyse abgeschlossen");
     } catch (error) {
-      this.logger.error('Fehler bei geplanter technischer Analyse', error);
+      this.logger.error("Fehler bei geplanter technischer Analyse", error);
     }
   }
 
   /**
    * Trainiert ML-Modelle täglich um 2 Uhr nachts
    */
-  @Cron('0 2 * * *', {
-    name: 'trainModels',
-    timeZone: 'Europe/Berlin',
+  @Cron("0 2 * * *", {
+    name: "trainModels",
+    timeZone: "Europe/Berlin",
   })
   async handleModelTraining() {
     try {
-      this.logger.log('Starte geplantes ML-Training');
+      this.logger.log("Starte geplantes ML-Training");
       await this.mlPrediction.trainModel();
-      this.logger.log('Geplantes ML-Training abgeschlossen');
+      this.logger.log("Geplantes ML-Training abgeschlossen");
     } catch (error) {
-      this.logger.error('Fehler bei geplantem ML-Training', error);
+      this.logger.error("Fehler bei geplantem ML-Training", error);
     }
   }
 
   /**
    * Validiert Vorhersagen täglich um 3 Uhr nachts
    */
-  @Cron('0 3 * * *', {
-    name: 'validatePredictions',
-    timeZone: 'Europe/Berlin',
+  @Cron("0 3 * * *", {
+    name: "validatePredictions",
+    timeZone: "Europe/Berlin",
   })
   async handlePredictionValidation() {
     try {
-      this.logger.log('Starte geplante Vorhersage-Validierung');
+      this.logger.log("Starte geplante Vorhersage-Validierung");
       await this.mlPrediction.validatePredictions();
-      this.logger.log('Geplante Vorhersage-Validierung abgeschlossen');
+      this.logger.log("Geplante Vorhersage-Validierung abgeschlossen");
     } catch (error) {
-      this.logger.error('Fehler bei geplanter Vorhersage-Validierung', error);
+      this.logger.error("Fehler bei geplanter Vorhersage-Validierung", error);
     }
   }
 
   /**
    * Bereinigt alte Daten wöchentlich sonntags um 4 Uhr
    */
-  @Cron('0 4 * * 0', {
-    name: 'cleanupOldData',
-    timeZone: 'Europe/Berlin',
+  @Cron("0 4 * * 0", {
+    name: "cleanupOldData",
+    timeZone: "Europe/Berlin",
   })
   async handleDataCleanup() {
     try {
-      this.logger.log('Starte geplante Datenbereinigung');
-      
-      const retentionDays = this.configService.get<number>('DATA_RETENTION_DAYS', 365);
+      this.logger.log("Starte geplante Datenbereinigung");
+
+      const retentionDays = this.configService.get<number>(
+        "DATA_RETENTION_DAYS",
+        365,
+      );
       await this.prisma.cleanupOldData(retentionDays);
-      
-      this.logger.log('Geplante Datenbereinigung abgeschlossen');
+
+      this.logger.log("Geplante Datenbereinigung abgeschlossen");
     } catch (error) {
-      this.logger.error('Fehler bei geplanter Datenbereinigung', error);
+      this.logger.error("Fehler bei geplanter Datenbereinigung", error);
     }
   }
 
   /**
    * Erstellt täglich um 6 Uhr Vorhersagen für alle Aktien
    */
-  @Cron('0 6 * * *', {
-    name: 'generateDailyPredictions',
-    timeZone: 'Europe/Berlin',
+  @Cron("0 6 * * *", {
+    name: "generateDailyPredictions",
+    timeZone: "Europe/Berlin",
   })
   async handleDailyPredictions() {
     try {
-      this.logger.log('Starte tägliche Vorhersage-Generierung');
-      
+      this.logger.log("Starte tägliche Vorhersage-Generierung");
+
       const activeStocks = await this.prisma.stock.findMany({
         where: { isActive: true },
       });
@@ -133,33 +138,33 @@ export class TasksService {
           this.logger.error(`Fehler bei Vorhersage für ${stock.ticker}`, error);
         }
       }
-      
-      this.logger.log('Tägliche Vorhersage-Generierung abgeschlossen');
+
+      this.logger.log("Tägliche Vorhersage-Generierung abgeschlossen");
     } catch (error) {
-      this.logger.error('Fehler bei täglicher Vorhersage-Generierung', error);
+      this.logger.error("Fehler bei täglicher Vorhersage-Generierung", error);
     }
   }
 
   /**
    * Führt eine Integritätsprüfung der Datenbank täglich um 1 Uhr durch
    */
-  @Cron('0 1 * * *', {
-    name: 'databaseIntegrityCheck',
-    timeZone: 'Europe/Berlin',
+  @Cron("0 1 * * *", {
+    name: "databaseIntegrityCheck",
+    timeZone: "Europe/Berlin",
   })
   async handleDatabaseIntegrityCheck() {
     try {
-      this.logger.log('Starte Datenbank-Integritätsprüfung');
-      
+      this.logger.log("Starte Datenbank-Integritätsprüfung");
+
       const isHealthy = await this.prisma.checkIntegrity();
-      
+
       if (isHealthy) {
-        this.logger.log('Datenbank-Integritätsprüfung erfolgreich');
+        this.logger.log("Datenbank-Integritätsprüfung erfolgreich");
       } else {
-        this.logger.warn('Datenbank-Integritätsprobleme erkannt');
+        this.logger.warn("Datenbank-Integritätsprobleme erkannt");
       }
     } catch (error) {
-      this.logger.error('Fehler bei Datenbank-Integritätsprüfung', error);
+      this.logger.error("Fehler bei Datenbank-Integritätsprüfung", error);
     }
   }
 
@@ -168,8 +173,10 @@ export class TasksService {
    */
   private isMarketHours(): boolean {
     const now = new Date();
-    const berlinTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Berlin"}));
-    
+    const berlinTime = new Date(
+      now.toLocaleString("en-US", { timeZone: "Europe/Berlin" }),
+    );
+
     const hour = berlinTime.getHours();
     const day = berlinTime.getDay(); // 0 = Sonntag, 6 = Samstag
 
@@ -188,10 +195,10 @@ export class TasksService {
   async getTaskStatus(): Promise<any> {
     try {
       const stats = await this.dataIngestion.getDataStatistics();
-      
+
       // Hole neueste Training-Logs
       const recentTraining = await this.prisma.trainingLog.findFirst({
-        orderBy: { timestamp: 'desc' },
+        orderBy: { timestamp: "desc" },
       });
 
       // Hole neueste Vorhersagen
@@ -225,7 +232,7 @@ export class TasksService {
         },
       };
     } catch (error) {
-      this.logger.error('Fehler beim Abrufen des Task-Status', error);
+      this.logger.error("Fehler beim Abrufen des Task-Status", error);
       throw error;
     }
   }
@@ -235,26 +242,35 @@ export class TasksService {
    */
   async initializeDefaultStocks(): Promise<void> {
     try {
-      const defaultTickers = this.configService.get<string>('DEFAULT_TICKERS', 'AAPL,GOOGL,MSFT,AMZN,TSLA')
-        .split(',')
-        .map(ticker => ticker.trim());
+      const defaultTickers = this.configService
+        .get<string>("DEFAULT_TICKERS", "AAPL,GOOGL,MSFT,AMZN,TSLA")
+        .split(",")
+        .map((ticker) => ticker.trim());
 
-      this.logger.log(`Initialisiere Standard-Aktien: ${defaultTickers.join(', ')}`);
+      this.logger.log(
+        `Initialisiere Standard-Aktien: ${defaultTickers.join(", ")}`,
+      );
 
       for (const ticker of defaultTickers) {
         try {
           await this.dataIngestion.addStockToTracking(ticker);
-          
+
           // Kurze Pause zwischen den API-Aufrufen
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         } catch (error) {
-          this.logger.error(`Fehler bei der Initialisierung von ${ticker}`, error);
+          this.logger.error(
+            `Fehler bei der Initialisierung von ${ticker}`,
+            error,
+          );
         }
       }
 
-      this.logger.log('Standard-Aktien-Initialisierung abgeschlossen');
+      this.logger.log("Standard-Aktien-Initialisierung abgeschlossen");
     } catch (error) {
-      this.logger.error('Fehler bei der Standard-Aktien-Initialisierung', error);
+      this.logger.error(
+        "Fehler bei der Standard-Aktien-Initialisierung",
+        error,
+      );
       throw error;
     }
   }

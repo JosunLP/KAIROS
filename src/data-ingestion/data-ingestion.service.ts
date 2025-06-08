@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../persistence/prisma.service';
-import { AlphaVantageProvider } from './providers/alpha-vantage.provider';
-import { PolygonProvider } from './providers/polygon.provider';
-import { FinnhubProvider } from './providers/finnhub.provider';
-import { MockProvider } from './providers/mock.provider';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PrismaService } from "../persistence/prisma.service";
+import { AlphaVantageProvider } from "./providers/alpha-vantage.provider";
+import { PolygonProvider } from "./providers/polygon.provider";
+import { FinnhubProvider } from "./providers/finnhub.provider";
+import { MockProvider } from "./providers/mock.provider";
 
 export interface MarketDataPoint {
   timestamp: Date;
@@ -18,7 +18,10 @@ export interface MarketDataPoint {
 export interface DataProvider {
   name: string;
   isConfigured(): boolean;
-  fetchHistoricalData(ticker: string, days?: number): Promise<MarketDataPoint[]>;
+  fetchHistoricalData(
+    ticker: string,
+    days?: number,
+  ): Promise<MarketDataPoint[]>;
   fetchLatestData(ticker: string): Promise<MarketDataPoint | null>;
 }
 
@@ -35,7 +38,12 @@ export class DataIngestionService {
     private readonly mockProvider: MockProvider,
   ) {
     // Priorisierung: Echte Provider zuerst, dann Mock für Demo
-    this.providers = [this.alphaVantage, this.polygon, this.finnhub, this.mockProvider];
+    this.providers = [
+      this.alphaVantage,
+      this.polygon,
+      this.finnhub,
+      this.mockProvider,
+    ];
   }
 
   /**
@@ -55,11 +63,14 @@ export class DataIngestionService {
           // Rate Limiting - Pause zwischen API-Aufrufen
           await this.delay(this.getDelayBetweenRequests());
         } catch (error) {
-          this.logger.error(`Fehler beim Abrufen der Daten für ${stock.ticker}`, error);
+          this.logger.error(
+            `Fehler beim Abrufen der Daten für ${stock.ticker}`,
+            error,
+          );
         }
       }
     } catch (error) {
-      this.logger.error('Fehler beim Abrufen der aktuellsten Daten', error);
+      this.logger.error("Fehler beim Abrufen der aktuellsten Daten", error);
       throw error;
     }
   }
@@ -77,7 +88,7 @@ export class DataIngestionService {
       if (existing) {
         this.logger.warn(`Aktie ${ticker} wird bereits verfolgt`);
         return;
-      }      // Name automatisch ermitteln falls nicht angegeben
+      } // Name automatisch ermitteln falls nicht angegeben
       let stockName = name;
       if (!stockName) {
         try {
@@ -85,7 +96,9 @@ export class DataIngestionService {
           const quote = await this.alphaVantage.fetchLatestData(ticker);
           stockName = ticker; // Verwende erstmal den Ticker als Namen
         } catch (error) {
-          this.logger.warn(`Name für ${ticker} konnte nicht ermittelt werden, verwende Ticker`);
+          this.logger.warn(
+            `Name für ${ticker} konnte nicht ermittelt werden, verwende Ticker`,
+          );
           stockName = ticker;
         }
       }
@@ -102,7 +115,6 @@ export class DataIngestionService {
 
       // Erste historische Daten abrufen
       await this.fetchLatestDataForStock(ticker);
-
     } catch (error) {
       this.logger.error(`Fehler beim Hinzufügen der Aktie ${ticker}:`, error);
       throw error;
@@ -122,12 +134,16 @@ export class DataIngestionService {
       try {
         data = await this.alphaVantage.fetchHistoricalData(ticker);
       } catch (error) {
-        this.logger.warn(`Alpha Vantage fehlgeschlagen für ${ticker}, versuche Polygon...`);
-        
+        this.logger.warn(
+          `Alpha Vantage fehlgeschlagen für ${ticker}, versuche Polygon...`,
+        );
+
         try {
           data = await this.polygon.fetchHistoricalData(ticker);
         } catch (error2) {
-          this.logger.warn(`Polygon fehlgeschlagen für ${ticker}, versuche Finnhub...`);
+          this.logger.warn(
+            `Polygon fehlgeschlagen für ${ticker}, versuche Finnhub...`,
+          );
           data = await this.finnhub.fetchHistoricalData(ticker);
         }
       }
@@ -140,8 +156,9 @@ export class DataIngestionService {
       // Daten in Datenbank speichern
       await this.saveMarketData(ticker, data);
 
-      this.logger.log(`✅ ${data.length} Datenpunkte für ${ticker} gespeichert`);
-
+      this.logger.log(
+        `✅ ${data.length} Datenpunkte für ${ticker} gespeichert`,
+      );
     } catch (error) {
       this.logger.error(`Fehler beim Abrufen der Daten für ${ticker}:`, error);
       throw error;
@@ -151,15 +168,20 @@ export class DataIngestionService {
   /**
    * Holt historische Daten für eine neue Aktie
    */
-  async fetchHistoricalDataForStock(ticker: string, days: number = 365): Promise<void> {
+  async fetchHistoricalDataForStock(
+    ticker: string,
+    days: number = 365,
+  ): Promise<void> {
     const provider = this.getAvailableProvider();
     if (!provider) {
-      throw new Error('Kein konfigurierter Datenanbieter verfügbar');
+      throw new Error("Kein konfigurierter Datenanbieter verfügbar");
     }
 
     try {
-      this.logger.log(`Hole historische Daten für ${ticker} (${days} Tage) von ${provider.name}`);
-      
+      this.logger.log(
+        `Hole historische Daten für ${ticker} (${days} Tage) von ${provider.name}`,
+      );
+
       const historicalData = await provider.fetchHistoricalData(ticker, days);
       if (historicalData.length === 0) {
         this.logger.warn(`Keine historischen Daten für ${ticker} erhalten`);
@@ -167,9 +189,14 @@ export class DataIngestionService {
       }
 
       await this.saveMarketData(ticker, historicalData);
-      this.logger.log(`${historicalData.length} historische Datenpunkte für ${ticker} gespeichert`);
+      this.logger.log(
+        `${historicalData.length} historische Datenpunkte für ${ticker} gespeichert`,
+      );
     } catch (error) {
-      this.logger.error(`Fehler beim Abrufen historischer Daten für ${ticker}`, error);
+      this.logger.error(
+        `Fehler beim Abrufen historischer Daten für ${ticker}`,
+        error,
+      );
       throw error;
     }
   }
@@ -220,7 +247,10 @@ export class DataIngestionService {
   /**
    * Speichert Marktdaten in der Datenbank
    */
-  private async saveMarketData(ticker: string, dataPoints: MarketDataPoint[]): Promise<void> {
+  private async saveMarketData(
+    ticker: string,
+    dataPoints: MarketDataPoint[],
+  ): Promise<void> {
     try {
       const stock = await this.prisma.stock.findUnique({
         where: { ticker },
@@ -258,7 +288,10 @@ export class DataIngestionService {
         });
       }
     } catch (error) {
-      this.logger.error(`Fehler beim Speichern der Marktdaten für ${ticker}`, error);
+      this.logger.error(
+        `Fehler beim Speichern der Marktdaten für ${ticker}`,
+        error,
+      );
       throw error;
     }
   }
@@ -267,14 +300,17 @@ export class DataIngestionService {
    * Gibt den ersten verfügbaren und konfigurierten Provider zurück
    */
   private getAvailableProvider(): DataProvider | null {
-    return this.providers.find(provider => provider.isConfigured()) || null;
+    return this.providers.find((provider) => provider.isConfigured()) || null;
   }
 
   /**
    * Berechnet die Verzögerung zwischen API-Anfragen basierend auf der Konfiguration
    */
   private getDelayBetweenRequests(): number {
-    const requestsPerMinute = this.configService.get<number>('API_REQUESTS_PER_MINUTE', 5);
+    const requestsPerMinute = this.configService.get<number>(
+      "API_REQUESTS_PER_MINUTE",
+      5,
+    );
     return Math.ceil(60000 / requestsPerMinute); // Millisekunden
   }
 
@@ -282,7 +318,7 @@ export class DataIngestionService {
    * Hilfsfunktion für Verzögerungen
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -297,11 +333,11 @@ export class DataIngestionService {
       const totalDataPoints = await this.prisma.historicalData.count();
 
       const oldestData = await this.prisma.historicalData.findFirst({
-        orderBy: { timestamp: 'asc' },
+        orderBy: { timestamp: "asc" },
       });
 
       const newestData = await this.prisma.historicalData.findFirst({
-        orderBy: { timestamp: 'desc' },
+        orderBy: { timestamp: "desc" },
       });
 
       return {
@@ -310,11 +346,11 @@ export class DataIngestionService {
         oldestData: oldestData?.timestamp,
         newestData: newestData?.timestamp,
         availableProviders: this.providers
-          .filter(p => p.isConfigured())
-          .map(p => p.name),
+          .filter((p) => p.isConfigured())
+          .map((p) => p.name),
       };
     } catch (error) {
-      this.logger.error('Fehler beim Abrufen der Datenstatistiken', error);
+      this.logger.error("Fehler beim Abrufen der Datenstatistiken", error);
       throw error;
     }
   }

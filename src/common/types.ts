@@ -46,11 +46,17 @@ export interface AnalysisResult {
   timestamp: Date;
   signals: TradingSignal[];
   confidence: number;
-  recommendation: 'BUY' | 'SELL' | 'HOLD';
+  recommendation: "BUY" | "SELL" | "HOLD";
 }
 
 export interface TradingSignal {
-  type: 'RSI_OVERSOLD' | 'RSI_OVERBOUGHT' | 'MACD_BULLISH' | 'MACD_BEARISH' | 'SMA_CROSSOVER' | 'BOLLINGER_SQUEEZE';
+  type:
+    | "RSI_OVERSOLD"
+    | "RSI_OVERBOUGHT"
+    | "MACD_BULLISH"
+    | "MACD_BEARISH"
+    | "SMA_CROSSOVER"
+    | "BOLLINGER_SQUEEZE";
   strength: number; // 0-1
   description: string;
 }
