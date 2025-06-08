@@ -6,9 +6,9 @@
   "private": true,
   "license": "MIT",
   "bin": {
-    "kairos": "./dist/main.js"
-  },
+    "kairos": "./dist/main.js"  },
   "scripts": {
+    "setup": "node setup.js",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

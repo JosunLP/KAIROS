@@ -4,6 +4,7 @@ import { PrismaService } from '../persistence/prisma.service';
 import { AlphaVantageProvider } from './providers/alpha-vantage.provider';
 import { PolygonProvider } from './providers/polygon.provider';
 import { FinnhubProvider } from './providers/finnhub.provider';
+import { MockProvider } from './providers/mock.provider';
 
 export interface MarketDataPoint {
   timestamp: Date;
@@ -25,15 +26,16 @@ export interface DataProvider {
 export class DataIngestionService {
   private readonly logger = new Logger(DataIngestionService.name);
   private readonly providers: DataProvider[];
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly alphaVantage: AlphaVantageProvider,
     private readonly polygon: PolygonProvider,
     private readonly finnhub: FinnhubProvider,
+    private readonly mockProvider: MockProvider,
   ) {
-    this.providers = [this.alphaVantage, this.polygon, this.finnhub];
+    // Priorisierung: Echte Provider zuerst, dann Mock für Demo
+    this.providers = [this.alphaVantage, this.polygon, this.finnhub, this.mockProvider];
   }
 
   /**
