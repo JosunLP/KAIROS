@@ -1,225 +1,264 @@
-# KAIROS ML Training Befehle - Persistente CLI
+# KAIROS ML-Training Commands - Erweitert mit automatischer Datenaktualisierung
 
 ## Übersicht
 
-KAIROS bietet erweiterte Befehle zum Trainieren des Machine Learning Modells mit vollständiger Kontrolle über den Training-Prozess. Die CLI unterstützt zwei Modi:
+Das KAIROS ML-Training wurde für den **persistenten CLI-Modus** optimiert und kann im Hintergrund laufen, während Sie andere CLI-Befehle verwenden. **NEU**: Automatisches Abrufen frischer Daten vor jedem Training!
 
-1. **Einzelbefehl-Modus**: `npm start <befehl>` (Legacy)
-2. **Persistenter Modus**: `npm start` (Empfohlen für Training)
+## ⚡ WICHTIGE NEUERUNGEN
 
-## Modi
+### Automatische Datenaktualisierung
 
-### Persistenter Modus (Empfohlen)
+- **Vor jedem Training** werden automatisch frische Daten von APIs abgerufen
+- Falls keine überwachten Aktien vorhanden sind, werden automatisch Beispiel-Aktien hinzugefügt (AAPL, GOOGL, MSFT, TSLA, AMZN)
+- Das Training nutzt immer die neuesten verfügbaren Daten für bessere Modell-Qualität
+- Kombiniert frische API-Daten mit bereits gespeicherten historischen Daten
 
-```bash
-# Starte persistente CLI
-npm start
+### Hintergrund-Training
 
-# CLI bleibt geöffnet:
-kairos> train-start
-kairos> train-status
-kairos> list
-kairos> exit
-```
+- Training läuft im Hintergrund und blockiert die CLI nicht
+- Live-Status-Updates alle 10 Sekunden während des Trainings
+- Training kann nur über spezielle Befehle gestoppt werden (nicht durch CLI-Exit)
 
-**Vorteile:**
-
-- CLI bleibt konstant geöffnet
-- Training läuft im Hintergrund weiter
-- Andere Befehle bleiben während Training verfügbar
-- Automatische Status-Updates
-- Sicheres Beenden mit `exit`
-
-### Einzelbefehl-Modus (Legacy)
-
-```bash
-# Einzelne Befehle ausführen
-npm start status
-npm start track AAPL
-npm start predict MSFT
-```
-
-## Verfügbare Training-Befehle
+## 🎯 Verfügbare Befehle
 
 ### `train-start`
 
-Startet das erweiterte ML-Training:
+#### Startet das ML-Training im Hintergrund mit automatischer Datenaktualisierung
 
-**Einzelbefehl-Modus:**
+**Workflow:**
 
-- Blockiert bis Training abgeschlossen
-- Zeigt Live-Updates in Konsole
+1. Prüft verfügbare überwachte Aktien
+2. Fügt Standard-Aktien hinzu, falls keine vorhanden (AAPL, GOOGL, MSFT, TSLA, AMZN)
+3. Holt frische Daten von APIs für alle Aktien
+4. Startet ML-Training mit kombinierten Daten
+5. Läuft mit 100 Epochen im Hintergrund
 
-**Persistenter Modus:**
-
-- Läuft im Hintergrund
-- CLI bleibt für andere Befehle verfügbar
-- Automatische Status-Updates alle 2 Sekunden
-
-```bash
-# Persistenter Modus (empfohlen)
-npm start
-kairos> train-start
-
-# Einzelbefehl-Modus
-npm start train-start
+``` bash
+> train-start
+🤖 Starte erweiteres ML-Modell-Training...
+📡 Hole frische Daten für Training...
+⚠️ Keine überwachten Aktien gefunden. Füge Beispiel-Aktien hinzu...
+✅ AAPL hinzugefügt
+✅ GOOGL hinzugefügt
+✅ MSFT hinzugefügt
+✅ TSLA hinzugefügt
+✅ AMZN hinzugefügt
+✅ Training im Hintergrund gestartet
+📊 Epoche 1/100 - Genauigkeit: 65%
 ```
 
 ### `train-stop`
 
-Beendet das laufende Training sicher:
+#### Stoppt das laufende Training sicher
 
-- **Graceful Shutdown**: Wartet auf aktuellen Epoche-Abschluss
-- **Datenintegrität**: Keine Korruption von Zwischenergebnissen
-- **Funktioniert in beiden Modi**
+- Wartet auf sichere Beendigung der aktuellen Epoche
+- Behält bereits trainierte Fortschritte bei
 
-```bash
-# Persistenter Modus
-kairos> train-stop
-
-# Einzelbefehl-Modus (in neuem Terminal)
-npm start train-stop
+``` bash
+> train-stop
+🛑 Beende Training sicher...
+✅ Training sicher beendet
 ```
 
 ### `train-status`
 
-Zeigt den aktuellen Status des Trainings:
+#### Zeigt den aktuellen Training-Status
 
-- **Laufzeit**: Wie lange das Training bereits läuft
-- **Fortschritt**: Aktuelle Epoche von Gesamt-Epochen
-- **Metriken**: Loss und Accuracy Werte
-- **Non-blocking**: Stört das Training nicht
+- Live-Informationen über Fortschritt
+- Aktuelle Epoche und geschätzte Restzeit
+- Trainings-Metriken
 
-```bash
-# Persistenter Modus
-kairos> train-status
-
-# Einzelbefehl-Modus
-npm start train-status
+``` md
+> train-status
+📊 Training Status:
+   Status: Training läuft
+   Epoche: 45/100 (45%)
+   Gestartet: 2024-01-15 14:30:00
+   Geschätzte Restzeit: ~5 Minuten
 ```
 
-## Workflow-Beispiele
+## 🔄 Typischer Workflow
 
-### Hintergrund-Training (Empfohlen)
+### 1. Persistente CLI starten
 
-```bash
-# 1. Persistente CLI starten
+```powershell
 npm start
-
-# 2. Training im Hintergrund starten
-kairos> train-start
-
-# 3. Andere Arbeiten während Training
-kairos> status
-kairos> list
-kairos> track TSLA
-
-# 4. Training-Status prüfen
-kairos> train-status
-
-# 5. Bei Bedarf Training stoppen
-kairos> train-stop
-
-# 6. Anwendung beenden
-kairos> exit
 ```
 
-### Server-Deployment
+### 2. Training im Hintergrund starten (mit automatischer Datenaktualisierung)
 
 ```bash
-# Für Server: Training läuft konstant im Hintergrund
-npm start
-kairos> train-start
-# Lassen Sie die CLI offen - Training läuft weiter
+> train-start
 ```
 
-### Monitoring
+### 3. Andere Befehle verwenden (während Training läuft)
 
 ```bash
-# In separatem Terminal: Status überwachen
-npm start train-status
-
-# Oder im persistenten Modus:
-kairos> train-status
+> help
+> add-stock NVDA          # Fügt weitere Aktien hinzu
+> analyze AAPL            # Analysiert bestehende Daten
+> predict TSLA 5          # Nutzt trainiertes Modell
+> train-status            # Prüft Training-Fortschritt
 ```
 
-## Technische Details
-
-### Persistenter Modus
-
-- **Readline Interface**: Interaktive CLI mit History
-- **Hintergrund-Processing**: Non-blocking Training
-- **Automatische Updates**: Status alle 2 Sekunden
-- **Graceful Shutdown**: Sicherer Exit mit `exit` oder Ctrl+C
-
-### Hintergrund-Training
-
-- **Non-blocking**: CLI bleibt responsiv
-- **Status-Updates**: Live-Anzeige in Terminal
-- **Memory Management**: Automatische Bereinigung
-- **Recovery**: Robust gegen Unterbrechungen
-
-### Training-Kontrolle
-
-- **AbortController**: Saubere Abbruch-Kontrolle
-- **Epochen-Checkpoints**: Sicherer Stopp nach Epoche
-- **State Persistence**: Status bleibt über CLI-Sitzung bestehen
-
-## Troubleshooting
-
-### Training startet nicht
+### 4. Training-Status überprüfen
 
 ```bash
-# Status prüfen
-kairos> status
-
-# Daten überprüfen (min. 100 Datenpunkte)
-kairos> list
+> train-status
 ```
 
-### CLI reagiert nicht
+### 5. Bei Bedarf Training stoppen
 
 ```bash
-# Ctrl+C zum sicheren Beenden
-# Oder in neuem Terminal:
-npm start train-stop
+> train-stop
 ```
 
-### Training hängt
+### 6. CLI beenden (Training läuft weiter bis Completion)
 
 ```bash
-# Status in neuem Terminal prüfen
-npm start train-status
-
-# Training forciert stoppen
-npm start train-stop
+> exit
 ```
 
-### Speicher-Probleme
+## 📊 Datenquellen für Training
 
-- Training wird automatisch bei niedrigem Speicher gestoppt
-- Restart der CLI behebt die meisten Speicher-Leaks
-- TensorFlow Tensoren werden automatisch bereinigt
+Das ML-Training nutzt jetzt eine **Hybrid-Strategie**:
 
-## Best Practices
+1. **Frische API-Daten**:
+   - Automatisch vor jedem Training abgerufen
+   - Neueste Marktdaten für bessere Aktualität
+   - Unterstützt mehrere Provider (Alpha Vantage, Polygon, Finnhub)
 
-### Für Entwicklung
+2. **Historische Daten**:
+   - Bereits gespeicherte Daten aus vorherigen Abrufen
+   - Umfangreiche historische Basis für Mustererkennung
 
-1. **Persistenten Modus verwenden**: `npm start`
-2. **Status regelmäßig prüfen**: `train-status`
-3. **Sicher beenden**: `train-stop` vor `exit`
-4. **Genügend Daten**: Min. 100 Datenpunkte vor Training
+3. **Automatische Aktien-Verwaltung**:
+   - Standard-Portfolio: AAPL, GOOGL, MSFT, TSLA, AMZN
+   - Oder Ihre individuell überwachten Aktien
+   - Erweiterbar mit `add-stock` Befehl
 
-### Für Server-Deployment
+4. **Technische Indikatoren**:
+   - SMA20, EMA50, RSI14, MACD
+   - Automatisch berechnet und einbezogen
 
-1. **Persistenten Modus**: CLI immer offen lassen
-2. **Automatisches Training**: `train-start` nach Systemstart
-3. **Monitoring**: Regelmäßige `train-status` Checks
-4. **Logs**: NestJS Logging für Debugging
+## ⚠️ Wichtige Hinweise
 
-### Performance
+- **Mindestdaten**: Für erfolgreiches Training sind mindestens 100 verarbeitbare Datenpunkte erforderlich
+- **Erste Verwendung**: Beim ersten Training werden Standard-Aktien hinzugefügt - dies kann 5-10 Minuten dauern
+- **API-Limits**: Bei vielen Aktien kann das Daten-Abrufen länger dauern (Rate Limiting)
+- **Netzwerk**: Training benötigt Internetverbindung für frische Daten
+- **Hintergrund**: Training läuft auch nach CLI-Exit weiter bis Completion
 
-1. **Hintergrund-Training**: Für bessere Responsivität
-2. **Memory Monitoring**: Speicherverbrauch überwachen
-3. **Checkpoint-Saves**: Regelmäßige Modell-Speicherung
-4. **Resource Management**: Training nur bei ausreichend RAM
+## 🚀 Performance-Tipps
+
+1. **Erste Verwendung**:
+
+   ``` bash
+   > train-start    # Fügt automatisch 5 Standard-Aktien hinzu
+   ```
+
+2. **Erweiterte Diversifikation**:
+
+   ``` bash
+   > add-stock NVDA
+   > add-stock AMD  
+   > add-stock META
+   > train-start    # Nutzt jetzt 8 Aktien für Training
+   ```
+
+3. **Regelmäßiges Re-Training**:
+
+   ``` bash
+   > train-start    # Spätere Trainings sind schneller (nur Updates)
+   ```
+
+4. **Monitoring während Training**:
+
+   ``` bash
+   > train-status   # Live-Updates alle 10 Sekunden
+   ```
+
+## 🔧 Fehlerbehebung
+
+### "Nicht genügend Daten für Training"
+
+**Lösung**: Das System fügt automatisch Standard-Aktien hinzu, aber Sie können auch manuell welche hinzufügen:
+
+``` bash
+> add-stock AAPL
+> add-stock GOOGL
+> add-stock MSFT
+> train-start
+```
+
+### Training hängt bei Daten-Abruf
+
+**Mögliche Ursachen**:
+
+- Internetverbindung prüfen
+- API-Keys in .env-Datei konfiguriert?
+- Rate Limiting bei API-Provider
+
+**Lösung**:
+
+``` bash
+> train-stop        # Sicher abbrechen
+> train-start       # Erneut versuchen
+```
+
+### Training läuft nicht im Hintergrund
+
+**Prüfen**:
+
+- Verwenden Sie `train-start` statt alter Befehle?
+- CLI muss im persistenten Modus sein (`npm start`)
+- Nicht im Einzelbefehl-Modus (`npm start train`)
+
+### API-Fehler bei Daten-Abruf
+
+**Lösung**:
+
+``` bash
+# .env Datei prüfen:
+ALPHA_VANTAGE_API_KEY=your_key_here
+POLYGON_API_KEY=your_key_here
+FINNHUB_API_KEY=your_key_here
+```
+
+## 📈 Monitoring und Optimierung
+
+### Live-Status während Training
+
+``` bash
+> train-status
+📊 Training Status:
+   Status: Training läuft
+   Epoche: 25/100 (25%)
+   Gestartet: 2024-01-15 14:30:00
+   Aktuelle Genauigkeit: 68.5%
+   Geschätzte Restzeit: ~8 Minuten
+```
+
+### Nach Training abgeschlossen
+
+``` bash
+> train-status
+📊 Training Status:
+   Status: Abgeschlossen
+   Epochen: 100/100 (100%)
+   Finale Genauigkeit: 72.3%
+   Dauer: 12 Minuten
+   Modell gespeichert: ✅
+```
+
+### Modell testen
+
+``` bash
+> predict AAPL 5
+🔮 5-Tage Prognose für AAPL basierend auf frisch trainierten Modell...
+✅ Prognose erstellt
+```
+
+---
+
+**💡 Tipp**: Das neue System mit automatischer Datenaktualisierung macht ML-Training viel praktischer und genauer - einfach `train-start` eingeben und das System holt automatisch die benötigten Daten und startet das Training im Hintergrund!
