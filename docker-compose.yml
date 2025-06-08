@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  kairos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: kairos-app
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/kairos.db
+      - LOG_LEVEL=info
+      - ENABLE_FILE_LOGGING=true
+      - LOG_FILE_PATH=/app/logs/kairos.log
+    env_file:
+      - .env
+    volumes:
+      # Persistente Datenbank
+      - kairos_data:/app/data
+      # Persistente ML-Modelle
+      - kairos_models:/app/models
+      # Log-Dateien
+      - kairos_logs:/app/logs
+    networks:
+      - kairos_network
+    restart: unless-stopped
+    # Für CLI-Anwendung: interaktiver Modus
+    stdin_open: true
+    tty: true
+
+  # Entwicklungsversion mit Hot-Reload
+  kairos-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    container_name: kairos-dev
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=file:/app/data/kairos.db
+      - LOG_LEVEL=debug
+    env_file:
+      - .env
+    volumes:
+      # Source-Code für Hot-Reload
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./package*.json:/app/
+      # Persistente Daten
+      - kairos_data_dev:/app/data
+      - kairos_models_dev:/app/models
+      - kairos_logs_dev:/app/logs
+    networks:
+      - kairos_network
+    command: npm run start:dev
+    stdin_open: true
+    tty: true
+    profiles:
+      - dev
+
+  # Prisma Studio für Datenbankvisualisierung
+  prisma-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    container_name: kairos-prisma-studio
+    environment:
+      - DATABASE_URL=file:/app/data/kairos.db
+    env_file:
+      - .env
+    volumes:
+      - kairos_data_dev:/app/data
+      - ./prisma:/app/prisma
+    ports:
+      - "5555:5555"
+    networks:
+      - kairos_network
+    command: npx prisma studio --hostname 0.0.0.0
+    profiles:
+      - dev
+
+volumes:
+  # Produktions-Volumes
+  kairos_data:
+    driver: local
+  kairos_models:
+    driver: local
+  kairos_logs:
+    driver: local
+    
+  # Entwicklungs-Volumes
+  kairos_data_dev:
+    driver: local
+  kairos_models_dev:
+    driver: local
+  kairos_logs_dev:
+    driver: local
+
+networks:
+  kairos_network:
+    driver: bridge

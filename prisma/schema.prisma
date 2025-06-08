@@ -1,0 +1,133 @@
+// Prisma-Schema für KAIROS Stock Analysis
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./kairos.db"
+}
+
+model Stock {
+  id     String @id @default(cuid())
+  ticker String @unique
+  name   String
+  
+  // Zusätzliche Metadaten
+  sector    String?
+  industry  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  // Relationen
+  historicalData HistoricalData[]
+  predictions    Prediction[]
+
+  @@map("stocks")
+}
+
+model HistoricalData {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    BigInt
+  
+  // Berechnete technische Indikatoren
+  sma20     Float?  // Simple Moving Average 20
+  ema50     Float?  // Exponential Moving Average 50
+  rsi14     Float?  // Relative Strength Index 14
+  macd      Float?  // MACD Line
+  macdSignal Float? // MACD Signal Line
+  macdHist  Float?  // MACD Histogram
+  bollUpper Float?  // Bollinger Band Upper
+  bollLower Float?  // Bollinger Band Lower
+  bollMid   Float?  // Bollinger Band Middle
+  
+  // Zusätzliche Indikatoren
+  adx       Float?  // Average Directional Index
+  cci       Float?  // Commodity Channel Index
+  williamsR Float?  // Williams %R
+  
+  // Relation
+  stockId   String
+  stock     Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([stockId, timestamp]) // Verhindert Duplikate
+  @@index([stockId, timestamp])
+  @@map("historical_data")
+}
+
+model Prediction {
+  id          String   @id @default(cuid())
+  stockId     String
+  timestamp   DateTime @default(now())
+  
+  // Vorhersagewerte
+  predictedPrice      Float?
+  predictedDirection  String?  // "UP", "DOWN", "NEUTRAL"
+  confidence          Float?   // 0.0 - 1.0
+  
+  // Zeithorizont der Vorhersage
+  horizonDays         Int      @default(1)
+  targetDate          DateTime
+  
+  // Modell-Metadaten
+  modelVersion        String
+  features            String?  // JSON String der verwendeten Features
+  
+  // Validierung (wird später gefüllt)
+  actualPrice         Float?
+  actualDirection     String?
+  accuracy            Float?
+  
+  stock     Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  
+  @@index([stockId, timestamp])
+  @@index([targetDate])
+  @@map("predictions")
+}
+
+model Configuration {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("configurations")
+}
+
+model TrainingLog {
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  modelVersion  String
+  
+  // Training-Metriken
+  loss          Float?
+  accuracy      Float?
+  valLoss       Float?
+  valAccuracy   Float?
+  
+  // Training-Parameter
+  epochs        Int?
+  batchSize     Int?
+  learningRate  Float?
+  
+  // Daten-Metadaten
+  trainingSize  Int?
+  testSize      Int?
+  features      String?  // JSON String
+  
+  // Status
+  status        String   @default("COMPLETED") // STARTED, COMPLETED, FAILED
+  errorMessage  String?
+  
+  @@index([timestamp])
+  @@map("training_logs")
+}
