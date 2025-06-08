@@ -7,6 +7,16 @@ export interface PredictionResult {
   timeframe?: number; // Anzahl Tage
 }
 
+export interface TrainingStatus {
+  isTraining: boolean;
+  startTime?: Date;
+  currentEpoch?: number;
+  totalEpochs?: number;
+  loss?: number;
+  accuracy?: number;
+  shouldStop?: boolean;
+}
+
 export interface HistoricalDataPoint {
   timestamp: Date;
   open: number;

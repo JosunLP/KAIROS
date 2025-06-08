@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../persistence/prisma.service";
-import { PredictionResult } from "../common/types";
+import { PredictionResult, TrainingStatus } from "../common/types";
 import * as tf from "@tensorflow/tfjs";
 import * as fs from "fs";
 import * as path from "path";
@@ -16,6 +16,8 @@ export class MlPredictionService {
   private readonly logger = new Logger(MlPredictionService.name);
   private readonly modelDir = path.join(process.cwd(), "models");
   private models: Map<string, tf.LayersModel> = new Map();
+  private trainingStatus: TrainingStatus = { isTraining: false };
+  private trainingAbortController?: AbortController;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -70,6 +72,91 @@ export class MlPredictionService {
       this.logger.error("Fehler beim Training:", error);
       return false;
     }
+  }
+
+  /**
+   * Startet das Training mit erweiterten Kontrollfunktionen
+   */
+  async startTraining(): Promise<boolean> {
+    if (this.trainingStatus.isTraining) {
+      this.logger.warn("Training läuft bereits");
+      return false;
+    }
+
+    try {
+      this.trainingStatus = {
+        isTraining: true,
+        startTime: new Date(),
+        currentEpoch: 0,
+        totalEpochs: 100,
+        shouldStop: false
+      };
+      
+      this.trainingAbortController = new AbortController();
+      
+      this.logger.log("🤖 Starte erweiteres ML-Modell-Training...");
+
+      // Trainingsdaten sammeln
+      const trainingData = await this.prepareTrainingData();
+
+      if (trainingData.length < 100) {
+        this.logger.warn(
+          "Nicht genügend Daten für Training (mindestens 100 benötigt)",
+        );
+        this.trainingStatus.isTraining = false;
+        return false;
+      }
+
+      // Modell erstellen und trainieren mit Abort-Kontrolle
+      const model = await this.createAndTrainModelWithControl(trainingData);
+
+      if (!this.trainingStatus.shouldStop && model) {
+        // Modell speichern
+        await this.saveModel(model);
+        this.logger.log("✅ ML-Modell erfolgreich trainiert und gespeichert");
+      } else {
+        this.logger.log("⚠️ Training wurde abgebrochen");
+      }
+
+      this.trainingStatus.isTraining = false;
+      return !this.trainingStatus.shouldStop;
+    } catch (error) {
+      this.logger.error("Fehler beim Training:", error);
+      this.trainingStatus.isTraining = false;
+      return false;
+    }
+  }
+
+  /**
+   * Stoppt das laufende Training sicher
+   */
+  async stopTraining(): Promise<boolean> {
+    if (!this.trainingStatus.isTraining) {
+      this.logger.warn("Kein Training läuft derzeit");
+      return false;
+    }
+
+    this.logger.log("🛑 Beende Training sicher...");
+    this.trainingStatus.shouldStop = true;
+    
+    if (this.trainingAbortController) {
+      this.trainingAbortController.abort();
+    }
+
+    // Warte bis Training beendet ist
+    while (this.trainingStatus.isTraining) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    this.logger.log("✅ Training sicher beendet");
+    return true;
+  }
+
+  /**
+   * Gibt den aktuellen Training-Status zurück
+   */
+  getTrainingStatus(): TrainingStatus {
+    return { ...this.trainingStatus };
   }
 
   /**
@@ -274,6 +361,95 @@ export class MlPredictionService {
     ys.dispose();
 
     return model;
+  }
+
+  /**
+   * Erstellt und trainiert das LSTM-Modell mit Abort-Kontrolle
+   */
+  private async createAndTrainModelWithControl(
+    trainingData: any[],
+  ): Promise<tf.LayersModel | null> {
+    const sequenceLength = 30;
+    const featuresCount = 6; // close, volume, sma20, ema50, rsi14, macd
+
+    // Modell-Architektur definieren
+    const model = tf.sequential({
+      layers: [
+        tf.layers.lstm({
+          units: 50,
+          returnSequences: true,
+          inputShape: [sequenceLength, featuresCount],
+        }),
+        tf.layers.dropout({ rate: 0.2 }),
+        tf.layers.lstm({
+          units: 50,
+          returnSequences: false,
+        }),
+        tf.layers.dropout({ rate: 0.2 }),
+        tf.layers.dense({ units: 25, activation: "relu" }),
+        tf.layers.dense({ units: 1, activation: "sigmoid" }),
+      ],
+    });
+
+    // Modell kompilieren
+    model.compile({
+      optimizer: tf.train.adam(0.001),
+      loss: "binaryCrossentropy",
+      metrics: ["accuracy"],
+    });
+
+    // Daten für Training vorbereiten
+    const inputs = trainingData.map((item) => item.input);
+    const outputs = trainingData.map((item) => item.output);
+
+    const xs = tf.tensor3d(inputs);
+    const ys = tf.tensor2d(outputs, [outputs.length, 1]);
+
+    try {
+      // Training mit Callback für Status-Updates und Abort-Kontrolle
+      await model.fit(xs, ys, {
+        epochs: this.trainingStatus.totalEpochs || 100,
+        batchSize: 32,
+        validationSplit: 0.2,
+        verbose: 0, // Deaktiviere Standard-Logging
+        callbacks: {
+          onEpochEnd: async (epoch, logs) => {
+            this.trainingStatus.currentEpoch = epoch + 1;
+            this.trainingStatus.loss = logs?.loss;
+            this.trainingStatus.accuracy = logs?.acc;
+
+            this.logger.log(
+              `📊 Epoche ${epoch + 1}/${this.trainingStatus.totalEpochs} - ` +
+              `Loss: ${logs?.loss?.toFixed(4)}, Accuracy: ${logs?.acc?.toFixed(4)}`
+            );
+
+            // Prüfe ob Training abgebrochen werden soll
+            if (this.trainingStatus.shouldStop) {
+              this.logger.log("🛑 Training wird abgebrochen...");
+              throw new Error("Training aborted by user");
+            }
+
+            // Kurze Pause um anderen Operationen Zeit zu geben
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
+        }
+      });
+
+      // Cleanup
+      xs.dispose();
+      ys.dispose();
+
+      return model;
+    } catch (error) {
+      // Cleanup bei Fehler
+      xs.dispose();
+      ys.dispose();
+      
+      if (error instanceof Error && error.message === "Training aborted by user") {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
