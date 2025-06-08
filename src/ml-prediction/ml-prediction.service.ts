@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../persistence/prisma.service";
+import { DataIngestionService } from "../data-ingestion/data-ingestion.service";
 import { PredictionResult, TrainingStatus } from "../common/types";
 import * as tf from "@tensorflow/tfjs";
 import * as fs from "fs";
@@ -22,6 +23,7 @@ export class MlPredictionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly dataIngestionService: DataIngestionService,
   ) {
     // Erstelle Model-Verzeichnis falls es nicht existiert
     if (!fs.existsSync(this.modelDir)) {
@@ -50,7 +52,10 @@ export class MlPredictionService {
     try {
       this.logger.log("🤖 Starte ML-Modell-Training...");
 
-      // Trainingsdaten sammeln
+      // SCHRITT 1: Frische Daten von APIs holen
+      await this.fetchFreshDataForTraining();
+
+      // SCHRITT 2: Trainingsdaten sammeln
       const trainingData = await this.prepareTrainingData();
 
       if (trainingData.length < 100) {
@@ -96,7 +101,10 @@ export class MlPredictionService {
       
       this.logger.log("🤖 Starte erweiteres ML-Modell-Training...");
 
-      // Trainingsdaten sammeln
+      // SCHRITT 1: Frische Daten von APIs holen
+      await this.fetchFreshDataForTraining();
+
+      // SCHRITT 2: Trainingsdaten sammeln
       const trainingData = await this.prepareTrainingData();
 
       if (trainingData.length < 100) {
@@ -448,6 +456,51 @@ export class MlPredictionService {
       if (error instanceof Error && error.message === "Training aborted by user") {
         return null;
       }
+      throw error;
+    }
+  }
+
+  /**
+   * Holt frische Daten vor dem Training
+   */
+  private async fetchFreshDataForTraining(): Promise<void> {
+    try {
+      this.logger.log("📡 Hole frische Daten für Training...");
+      
+      // Prüfe ob überwachte Aktien vorhanden sind
+      const trackedStocks = await this.prisma.stock.findMany({
+        where: { isActive: true }
+      });
+
+      if (trackedStocks.length === 0) {
+        this.logger.log("⚠️ Keine überwachten Aktien gefunden. Füge Beispiel-Aktien hinzu...");
+        
+        // Füge einige Standard-Aktien für Demo-Zwecke hinzu
+        const defaultStocks = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN'];
+        
+        for (const ticker of defaultStocks) {
+          if (this.trainingStatus.shouldStop) break;
+          
+          try {
+            await this.dataIngestionService.addNewStock(ticker);
+            this.logger.log(`✅ ${ticker} hinzugefügt`);
+            
+            // Kurze Pause zwischen API-Aufrufen
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (error) {
+            this.logger.warn(`Fehler beim Hinzufügen von ${ticker}:`, error instanceof Error ? error.message : String(error));
+            continue;
+          }
+        }
+      } else {
+        // Aktualisiere Daten für alle verfolgten Aktien
+        this.logger.log(`📊 Aktualisiere Daten für ${trackedStocks.length} verfolgte Aktien...`);
+        await this.dataIngestionService.fetchLatestDataForAllTrackedStocks();
+      }
+
+      this.logger.log("✅ Frische Daten erfolgreich abgerufen");
+    } catch (error) {
+      this.logger.error("Fehler beim Abrufen frischer Daten:", error);
       throw error;
     }
   }
