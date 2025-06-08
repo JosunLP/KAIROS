@@ -7,12 +7,14 @@ Das KAIROS ML-Training wurde für den **persistenten CLI-Modus** optimiert und k
 ## ⚡ WICHTIGE NEUERUNGEN
 
 ### Automatische Datenaktualisierung
+
 - **Vor jedem Training** werden automatisch frische Daten von APIs abgerufen
 - Falls keine überwachten Aktien vorhanden sind, werden automatisch Beispiel-Aktien hinzugefügt (AAPL, GOOGL, MSFT, TSLA, AMZN)
 - Das Training nutzt immer die neuesten verfügbaren Daten für bessere Modell-Qualität
 - Kombiniert frische API-Daten mit bereits gespeicherten historischen Daten
 
 ### Hintergrund-Training
+
 - Training läuft im Hintergrund und blockiert die CLI nicht
 - Live-Status-Updates alle 10 Sekunden während des Trainings
 - Training kann nur über spezielle Befehle gestoppt werden (nicht durch CLI-Exit)
@@ -20,16 +22,18 @@ Das KAIROS ML-Training wurde für den **persistenten CLI-Modus** optimiert und k
 ## 🎯 Verfügbare Befehle
 
 ### `train-start`
-**Startet das ML-Training im Hintergrund mit automatischer Datenaktualisierung**
+
+#### Startet das ML-Training im Hintergrund mit automatischer Datenaktualisierung
 
 **Workflow:**
+
 1. Prüft verfügbare überwachte Aktien
 2. Fügt Standard-Aktien hinzu, falls keine vorhanden (AAPL, GOOGL, MSFT, TSLA, AMZN)
 3. Holt frische Daten von APIs für alle Aktien
 4. Startet ML-Training mit kombinierten Daten
 5. Läuft mit 100 Epochen im Hintergrund
 
-```
+``` bash
 > train-start
 🤖 Starte erweiteres ML-Modell-Training...
 📡 Hole frische Daten für Training...
@@ -44,23 +48,27 @@ Das KAIROS ML-Training wurde für den **persistenten CLI-Modus** optimiert und k
 ```
 
 ### `train-stop`
-**Stoppt das laufende Training sicher**
+
+#### Stoppt das laufende Training sicher
+
 - Wartet auf sichere Beendigung der aktuellen Epoche
 - Behält bereits trainierte Fortschritte bei
 
-```
+``` bash
 > train-stop
 🛑 Beende Training sicher...
 ✅ Training sicher beendet
 ```
 
 ### `train-status`
-**Zeigt den aktuellen Training-Status**
+
+#### Zeigt den aktuellen Training-Status
+
 - Live-Informationen über Fortschritt
 - Aktuelle Epoche und geschätzte Restzeit
 - Trainings-Metriken
 
-```
+``` md
 > train-status
 📊 Training Status:
    Status: Training läuft
@@ -72,17 +80,20 @@ Das KAIROS ML-Training wurde für den **persistenten CLI-Modus** optimiert und k
 ## 🔄 Typischer Workflow
 
 ### 1. Persistente CLI starten
+
 ```powershell
 npm start
 ```
 
 ### 2. Training im Hintergrund starten (mit automatischer Datenaktualisierung)
-```
+
+```bash
 > train-start
 ```
 
 ### 3. Andere Befehle verwenden (während Training läuft)
-```
+
+```bash
 > help
 > add-stock NVDA          # Fügt weitere Aktien hinzu
 > analyze AAPL            # Analysiert bestehende Daten
@@ -91,17 +102,20 @@ npm start
 ```
 
 ### 4. Training-Status überprüfen
-```
+
+```bash
 > train-status
 ```
 
 ### 5. Bei Bedarf Training stoppen
-```
+
+```bash
 > train-stop
 ```
 
 ### 6. CLI beenden (Training läuft weiter bis Completion)
-```
+
+```bash
 > exit
 ```
 
@@ -109,12 +123,12 @@ npm start
 
 Das ML-Training nutzt jetzt eine **Hybrid-Strategie**:
 
-1. **Frische API-Daten**: 
+1. **Frische API-Daten**:
    - Automatisch vor jedem Training abgerufen
    - Neueste Marktdaten für bessere Aktualität
    - Unterstützt mehrere Provider (Alpha Vantage, Polygon, Finnhub)
 
-2. **Historische Daten**: 
+2. **Historische Daten**:
    - Bereits gespeicherte Daten aus vorherigen Abrufen
    - Umfangreiche historische Basis für Mustererkennung
 
@@ -123,7 +137,7 @@ Das ML-Training nutzt jetzt eine **Hybrid-Strategie**:
    - Oder Ihre individuell überwachten Aktien
    - Erweiterbar mit `add-stock` Befehl
 
-4. **Technische Indikatoren**: 
+4. **Technische Indikatoren**:
    - SMA20, EMA50, RSI14, MACD
    - Automatisch berechnet und einbezogen
 
@@ -137,13 +151,15 @@ Das ML-Training nutzt jetzt eine **Hybrid-Strategie**:
 
 ## 🚀 Performance-Tipps
 
-1. **Erste Verwendung**: 
-   ```
+1. **Erste Verwendung**:
+
+   ``` bash
    > train-start    # Fügt automatisch 5 Standard-Aktien hinzu
    ```
 
 2. **Erweiterte Diversifikation**:
-   ```
+
+   ``` bash
    > add-stock NVDA
    > add-stock AMD  
    > add-stock META
@@ -151,20 +167,24 @@ Das ML-Training nutzt jetzt eine **Hybrid-Strategie**:
    ```
 
 3. **Regelmäßiges Re-Training**:
-   ```
+
+   ``` bash
    > train-start    # Spätere Trainings sind schneller (nur Updates)
    ```
 
 4. **Monitoring während Training**:
-   ```
+
+   ``` bash
    > train-status   # Live-Updates alle 10 Sekunden
    ```
 
 ## 🔧 Fehlerbehebung
 
 ### "Nicht genügend Daten für Training"
+
 **Lösung**: Das System fügt automatisch Standard-Aktien hinzu, aber Sie können auch manuell welche hinzufügen:
-```
+
+``` bash
 > add-stock AAPL
 > add-stock GOOGL
 > add-stock MSFT
@@ -172,26 +192,33 @@ Das ML-Training nutzt jetzt eine **Hybrid-Strategie**:
 ```
 
 ### Training hängt bei Daten-Abruf
+
 **Mögliche Ursachen**:
+
 - Internetverbindung prüfen
 - API-Keys in .env-Datei konfiguriert?
 - Rate Limiting bei API-Provider
 
 **Lösung**:
-```
+
+``` bash
 > train-stop        # Sicher abbrechen
 > train-start       # Erneut versuchen
 ```
 
 ### Training läuft nicht im Hintergrund
+
 **Prüfen**:
+
 - Verwenden Sie `train-start` statt alter Befehle?
 - CLI muss im persistenten Modus sein (`npm start`)
 - Nicht im Einzelbefehl-Modus (`npm start train`)
 
 ### API-Fehler bei Daten-Abruf
+
 **Lösung**:
-```
+
+``` bash
 # .env Datei prüfen:
 ALPHA_VANTAGE_API_KEY=your_key_here
 POLYGON_API_KEY=your_key_here
@@ -201,7 +228,8 @@ FINNHUB_API_KEY=your_key_here
 ## 📈 Monitoring und Optimierung
 
 ### Live-Status während Training
-```
+
+``` bash
 > train-status
 📊 Training Status:
    Status: Training läuft
@@ -212,7 +240,8 @@ FINNHUB_API_KEY=your_key_here
 ```
 
 ### Nach Training abgeschlossen
-```
+
+``` bash
 > train-status
 📊 Training Status:
    Status: Abgeschlossen
@@ -223,7 +252,8 @@ FINNHUB_API_KEY=your_key_here
 ```
 
 ### Modell testen
-```
+
+``` bash
 > predict AAPL 5
 🔮 5-Tage Prognose für AAPL basierend auf frisch trainierten Modell...
 ✅ Prognose erstellt
