@@ -10,6 +10,7 @@
 	},
 	"scripts": {
 		"setup": "node setup.js",
+		"docker:setup": "node docker-setup.js",
 		"build": "nest build",
 		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
 		"start": "nest start",
@@ -21,12 +22,21 @@
 		"test:watch": "jest --watch",
 		"test:cov": "jest --coverage",
 		"test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-		"test:e2e": "jest --config ./test/jest-e2e.json",
-		"prisma:generate": "prisma generate",
+		"test:e2e": "jest --config ./test/jest-e2e.json",		"prisma:generate": "prisma generate",
 		"prisma:push": "prisma db push",
 		"prisma:migrate": "prisma migrate dev",
 		"prisma:studio": "prisma studio",
-		"db:reset": "prisma migrate reset --force"
+		"db:reset": "prisma migrate reset --force",		"docker:build": "docker build -t kairos:latest .",
+		"docker:build:dev": "docker build -t kairos:dev -f Dockerfile.dev .",
+		"docker:build:all": "npm run build && npm run docker:build && npm run docker:build:dev",
+		"docker:run": "docker run -it --rm -p 3000:3000 kairos:latest",
+		"docker:run:dev": "docker run -it --rm -p 3000:3000 -v ${PWD}:/app kairos:dev",
+		"docker:compose:up": "docker-compose up -d",
+		"docker:compose:down": "docker-compose down",
+		"docker:compose:build": "docker-compose build",
+		"docker:compose:rebuild": "docker-compose down && docker-compose build --no-cache && docker-compose up -d",
+		"docker:clean": "docker system prune -f && docker image prune -f",
+		"docker:logs": "docker-compose logs -f"
 	},
 	"dependencies": {
 		"@nestjs/common": "^10.3.2",
