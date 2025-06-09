@@ -1254,4 +1254,163 @@ export class AnalysisEngineService {
       throw error;
     }
   }
+
+  // Public methods for testing
+  public calculateSMA(values: number[], period: number): number[] {
+    try {
+      return TI.SMA.calculate({ period, values });
+    } catch (error) {
+      this.logger.warn("Fehler bei SMA-Berechnung:", error);
+      return [];
+    }
+  }
+
+  public calculateEMA(values: number[], period: number): number[] {
+    try {
+      return TI.EMA.calculate({ period, values });
+    } catch (error) {
+      this.logger.warn("Fehler bei EMA-Berechnung:", error);
+      return [];
+    }
+  }
+
+  public calculateRSI(values: number[], period: number = 14): number[] {
+    try {
+      return TI.RSI.calculate({ period, values });
+    } catch (error) {
+      this.logger.warn("Fehler bei RSI-Berechnung:", error);
+      return [];
+    }
+  }
+
+  public calculateMACD(values: number[], fastPeriod: number = 12, slowPeriod: number = 26, signalPeriod: number = 9) {
+    try {
+      return TI.MACD.calculate({
+        fastPeriod,
+        slowPeriod,
+        signalPeriod,
+        values,
+        SimpleMAOscillator: false,
+        SimpleMASignal: false,
+      });
+    } catch (error) {
+      this.logger.warn("Fehler bei MACD-Berechnung:", error);
+      return [];
+    }
+  }
+
+  public calculateBollingerBands(values: number[], period: number = 20, stdDev: number = 2) {
+    try {
+      return TI.BollingerBands.calculate({
+        period,
+        stdDev,
+        values,
+      });
+    } catch (error) {
+      this.logger.warn("Fehler bei Bollinger Bands-Berechnung:", error);
+      return [];
+    }
+  }
+
+  public async analyzeStock(symbol: string) {
+    try {
+      const stock = await this.prisma.stock.findUnique({
+        where: { ticker: symbol },
+        include: {
+          historicalData: {
+            orderBy: { timestamp: 'desc' },
+            take: 50
+          }
+        }
+      });
+
+      if (!stock || stock.historicalData.length === 0) {
+        throw new Error(`No data found for symbol: ${symbol}`);
+      }
+
+      const closes = stock.historicalData.reverse().map(d => d.close);
+      const highs = stock.historicalData.map(d => d.high);
+      const lows = stock.historicalData.map(d => d.low);
+
+      const indicators = {
+        sma: this.calculateSMA(closes, 20),
+        ema: this.calculateEMA(closes, 20),
+        rsi: this.calculateRSI(closes, 14),
+        macd: this.calculateMACD(closes),
+        bollingerBands: this.calculateBollingerBands(closes)
+      };
+
+      return {
+        symbol,
+        analysis_date: new Date(),
+        indicators,
+        signals: this.generateSignals(indicators, closes),
+        confidence: this.calculateConfidence(indicators),
+        recommendation: this.generateRecommendation(indicators, closes)
+      };
+    } catch (error) {
+      this.logger.error(`Fehler bei der Analyse von ${symbol}:`, error);
+      throw error;
+    }
+  }
+
+  private generateSignals(indicators: any, closes: number[]): string[] {
+    const signals: string[] = [];
+    const currentPrice = closes[closes.length - 1];
+    
+    // RSI Signale
+    if (indicators.rsi.length > 0) {
+      const currentRSI = indicators.rsi[indicators.rsi.length - 1];
+      if (currentRSI > 70) {
+        signals.push('RSI_OVERBOUGHT');
+      } else if (currentRSI < 30) {
+        signals.push('RSI_OVERSOLD');
+      }
+    }
+
+    // SMA Signale
+    if (indicators.sma.length > 0) {
+      const currentSMA = indicators.sma[indicators.sma.length - 1];
+      if (currentPrice > currentSMA) {
+        signals.push('PRICE_ABOVE_SMA');
+      } else {
+        signals.push('PRICE_BELOW_SMA');
+      }
+    }
+
+    return signals;
+  }
+
+  private calculateConfidence(indicators: any): number {
+    let confidence = 0.5; // Base confidence
+
+    // Adjust based on available indicators
+    if (indicators.rsi.length > 0) confidence += 0.1;
+    if (indicators.macd.length > 0) confidence += 0.1;
+    if (indicators.sma.length > 0) confidence += 0.1;
+    if (indicators.ema.length > 0) confidence += 0.1;
+    if (indicators.bollingerBands.length > 0) confidence += 0.1;
+
+    return Math.min(confidence, 1.0);
+  }
+
+  private generateRecommendation(indicators: any, closes: number[]): string {
+    const signals = this.generateSignals(indicators, closes);
+    
+    const bullishSignals = signals.filter(s => 
+      s.includes('OVERSOLD') || s.includes('ABOVE')
+    ).length;
+    
+    const bearishSignals = signals.filter(s => 
+      s.includes('OVERBOUGHT') || s.includes('BELOW')
+    ).length;
+
+    if (bullishSignals > bearishSignals) {
+      return 'BUY';
+    } else if (bearishSignals > bullishSignals) {
+      return 'SELL';
+    } else {
+      return 'HOLD';
+    }
+  }
 }

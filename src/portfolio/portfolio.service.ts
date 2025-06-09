@@ -2,8 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../persistence/prisma.service";
 import {
   Portfolio,
+  Position,
   PortfolioPosition,
   RiskAssessment,
+  RiskMetrics,
   SystemHealth,
   SystemAlert,
 } from "../common/types";
@@ -136,10 +138,13 @@ export class PortfolioService {
         // Füge neue Position hinzu
         const newPosition: PortfolioPosition = {
           ticker,
+          symbol: ticker, // Beide Felder setzen für Kompatibilität
           quantity,
           averagePrice: price,
           currentPrice: price,
           unrealizedPL: 0,
+          unrealizedPnL: 0,
+          value: quantity * price,
           weight: 0, // Wird bei Portfolio-Update berechnet
           lastUpdated: new Date(),
         };
@@ -207,7 +212,7 @@ export class PortfolioService {
 
       // Berechne Gesamtwert
       let totalValue = 0;
-      const updatedPositions = portfolio.positions.map((position) => {
+      const updatedPositions: PortfolioPosition[] = portfolio.positions.map((position) => {
         const currentPrice =
           currentPrices.get(position.ticker) || position.averagePrice;
         const positionValue = position.quantity * currentPrice;
@@ -218,6 +223,9 @@ export class PortfolioService {
           currentPrice,
           unrealizedPL:
             positionValue - position.quantity * position.averagePrice,
+          unrealizedPnL:
+            positionValue - position.quantity * position.averagePrice,
+          value: positionValue,
           weight: 0, // Wird später berechnet
         };
       });
@@ -277,8 +285,12 @@ export class PortfolioService {
       }
 
       // Konzentrations-Risiko
+      const totalPortfolioValue = portfolio.totalValue || 1;
       const maxWeight = Math.max(
-        ...portfolio.positions.map((p) => p.weight || 0),
+        ...portfolio.positions.map((p) => {
+          const positionValue = p.quantity * (p.currentPrice || p.averagePrice);
+          return (positionValue / totalPortfolioValue) * 100;
+        }),
       );
       if (maxWeight > 30) {
         riskScore += 25;
@@ -319,9 +331,18 @@ export class PortfolioService {
           varDaily: 0, // Vereinfacht für Demo
           varWeekly: 0, // Vereinfacht für Demo
           sharpeRatio: metrics.sharpeRatio,
+          sortinoRatio: 0, // Vereinfacht für Demo
           maxDrawdown: metrics.maxDrawdown,
           volatility: metrics.volatility,
+          beta: 1, // Vereinfacht für Demo
+          correlationMatrix: {}, // Vereinfacht für Demo
+          concentrationRisk: 0, // Vereinfacht für Demo
+          correlations: {}, // Vereinfacht für Demo
+          var: 0, // Vereinfacht für Demo
+          cvar: 0, // Vereinfacht für Demo
+          liquidityRisk: 0, // Vereinfacht für Demo
         },
+        sectorExposure: [], // Vereinfacht für Demo
         alerts: [],
         recommendations: riskFactors.map(
           (factor) => `Überprüfen Sie: ${factor}`,
@@ -359,6 +380,9 @@ export class PortfolioService {
 
         optimizedPositions.push({
           ...position,
+          ticker: position.ticker,
+          symbol: position.symbol || position.ticker, // Ensure symbol is defined
+          lastUpdated: position.lastUpdated,
           weight: riskAdjustedWeight,
         });
       }
@@ -580,5 +604,14 @@ export class PortfolioService {
     portfolio.sharpeRatio = metrics.sharpeRatio;
     portfolio.maxDrawdown = metrics.maxDrawdown;
     portfolio.updatedAt = new Date();
+  }
+
+  // Type Guards für Position-Interfaces
+  private isPortfolioPosition(position: Position | PortfolioPosition): position is PortfolioPosition {
+    return 'ticker' in position && 'lastUpdated' in position;
+  }
+
+  private isPosition(position: Position | PortfolioPosition): position is Position {
+    return 'symbol' in position && !('ticker' in position);
   }
 }

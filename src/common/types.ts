@@ -1,64 +1,4 @@
-export interface PredictionResult {
-  ticker: string;
-  confidence: number;
-  direction: number; // 1 für Aufwärts, -1 für Abwärts
-  timestamp: Date;
-  targetPrice?: number;
-  timeframe?: number; // Anzahl Tage
-  metrics?: PredictionMetrics;
-  riskAssessment?: RiskAssessment;
-}
-
-export interface PredictionMetrics {
-  confidence: number;
-  volatility: number;
-  trendStrength: number;
-  riskScore: number;
-  supportLevels?: number[];
-  resistanceLevels?: number[];
-}
-
-export interface RiskAssessment {
-  portfolioId?: string;
-  riskScore: number; // 0-100
-  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  metrics: {
-    portfolioRisk: number;
-    varDaily: number;
-    varWeekly: number;
-    sharpeRatio: number;
-    maxDrawdown: number;
-    volatility: number;
-    correlationMatrix?: { [ticker: string]: { [ticker: string]: number } };
-  };
-  alerts: Array<{
-    type: string;
-    severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-    message: string;
-    value: number;
-    threshold: number;
-  }>;
-  recommendations: string[];
-  timestamp: Date;
-  // Legacy fields for backwards compatibility
-  level?: "LOW" | "MEDIUM" | "HIGH";
-  score?: number;
-  factors?: string[];
-}
-
-export interface TrainingStatus {
-  isTraining: boolean;
-  startTime?: Date;
-  currentEpoch?: number;
-  totalEpochs?: number;
-  loss?: number;
-  accuracy?: number;
-  shouldStop?: boolean;
-  validationLoss?: number;
-  validationAccuracy?: number;
-  progress?: number; // 0-100
-  estimatedTimeRemaining?: number; // in seconds
-}
+// Common types for KAIROS application
 
 export interface HistoricalDataPoint {
   timestamp: Date;
@@ -67,202 +7,249 @@ export interface HistoricalDataPoint {
   low: number;
   close: number;
   volume: bigint;
-  sma20?: number;
-  ema50?: number;
-  rsi14?: number;
-  macd?: number;
-}
-
-export interface StockInfo {
-  id: string;
-  ticker: string;
-  name: string;
 }
 
 export interface TechnicalIndicators {
-  sma20?: number;
-  sma50?: number;
-  sma200?: number;
-  ema12?: number;
-  ema26?: number;
-  ema50?: number;
-  rsi14?: number;
-  macd?: number;
-  macdSignal?: number;
-  macdHistogram?: number;
-  bb_upper?: number;
-  bb_middle?: number;
-  bb_lower?: number;
-  // Erweiterte Indikatoren
-  adx?: number;
-  cci?: number;
-  williamsR?: number;
-  stochK?: number;
-  stochD?: number;
-  atr?: number; // Average True Range
-  obv?: number; // On Balance Volume
-  mfi?: number; // Money Flow Index
-  trix?: number;
-  dmi?: number; // Directional Movement Index
+  sma?: number[];
+  ema?: number[];
+  rsi?: number[];
+  macd?: {
+    macd: number[];
+    signal: number[];
+    histogram: number[];
+  };
+  bollingerBands?: {
+    upper: number[];
+    middle: number[];
+    lower: number[];
+  };
+  stochastic?: {
+    k: number[];
+    d: number[];
+  };
 }
 
 export interface AnalysisResult {
-  ticker: string;
-  timestamp: Date;
-  signals: TradingSignal[];
+  symbol: string;
+  analysis_date: Date;
+  indicators: TechnicalIndicators;
+  signals: string[];
   confidence: number;
-  recommendation: "BUY" | "SELL" | "HOLD";
+  recommendation: string;
 }
 
-export interface TradingSignal {
-  type:
-    | "RSI_OVERSOLD"
-    | "RSI_OVERBOUGHT"
-    | "MACD_BULLISH"
-    | "MACD_BEARISH"
-    | "SMA_CROSSOVER"
-    | "BOLLINGER_SQUEEZE"
-    | "VOLUME_SPIKE"
-    | "BREAKOUT_RESISTANCE"
-    | "BREAKOUT_SUPPORT"
-    | "MOMENTUM_BULLISH"
-    | "MOMENTUM_BEARISH"
-    | "PATTERN_BULLISH"
-    | "PATTERN_BEARISH"
-    | "MANUAL"
-    | "STOP_LOSS"
-    | "TAKE_PROFIT";
-  strength: number; // 0-1
-  description: string;
-  action?: "BUY" | "SELL" | "HOLD";
-  timeframe?: string;
-  confidence?: number;
+export interface Prediction {
+  symbol: string;
+  prediction_date: Date;
+  target_price: number;
+  confidence: number;
+  time_horizon: string;
+  model_version: string;
 }
 
-export interface DataIngestionStats {
-  totalStocks: number;
-  totalDataPoints: number;
-  lastUpdate: Date;
-  oldestData: Date;
-  newestData: Date;
-}
-
-export interface MLModelMetrics {
-  accuracy: number;
-  precision: number;
-  recall: number;
-  f1Score: number;
-  lastTraining: Date;
-  trainingDataSize: number;
+export interface Position {
+  symbol: string;
+  quantity: number;
+  averagePrice: number;
+  currentPrice?: number;
+  value?: number;
+  unrealizedPnL?: number;
+  sector?: string;
 }
 
 export interface PortfolioPosition {
   ticker: string;
+  symbol: string;
   quantity: number;
   averagePrice: number;
   currentPrice?: number;
   unrealizedPL?: number;
-  weight?: number; // Prozent des Portfolios
+  unrealizedPnL?: number;
+  value?: number;
+  weight?: number;
   lastUpdated: Date;
+  sector?: string;
 }
 
 export interface Portfolio {
   id: string;
   name: string;
   totalValue: number;
-  initialValue?: number; // Startkapital
+  cash?: number;
   positions: PortfolioPosition[];
-  dailyReturn: number;
-  totalReturn: number;
-  sharpeRatio?: number;
-  maxDrawdown?: number;
+  dailyReturn?: number;
+  totalReturn?: number;
   createdAt: Date;
   updatedAt: Date;
+  initialValue?: number; // Initial capital value
+  sharpeRatio?: number; // Portfolio Sharpe ratio
+  maxDrawdown?: number; // Portfolio max drawdown
+}
+
+// Trading and Backtest related types
+export interface TradingSignal {
+  action: 'BUY' | 'SELL' | 'HOLD';
+  type: string; // Type of signal like "RSI_OVERSOLD", "MACD_BULLISH", etc.
+  symbol: string;
+  price: number;
+  quantity: number;
+  timestamp: Date;
+  confidence: number;
+  reason: string;
+  strength?: number; // Signal strength (0-1)
+  description?: string; // Signal description
+}
+
+export interface BacktestTrade {
+  id: string;
+  symbol: string;
+  type: 'BUY' | 'SELL';
+  quantity: number;
+  price: number;
+  timestamp: Date;
+  commission?: number;
+  slippage?: number;
+  return: number; // Return from this trade
+  entryDate: Date; // Entry date for the trade
+  exitDate?: Date; // Exit date for the trade
+  holdingPeriod: number; // Days held
 }
 
 export interface BacktestResult {
-  strategy: string;
-  ticker: string;
-  startDate: Date;
-  endDate: Date;
-  initialCapital: number;
-  finalCapital: number;
   totalReturn: number;
   annualizedReturn: number;
+  volatility: number;
   sharpeRatio: number;
   maxDrawdown: number;
-  volatility: number;
   winRate: number;
+  trades: BacktestTrade[];
   totalTrades: number;
   profitableTrades: number;
   profitFactor: number;
   averageHoldingPeriod: number;
-  trades: BacktestTrade[];
+  startDate: Date;
+  endDate: Date;
+  initialCapital: number;
+  finalValue: number;
+  strategy: string; // Strategy name
+  ticker?: string; // Symbol or "OVERALL" for portfolio-wide results
 }
 
-export interface BacktestTrade {
-  entryDate: Date;
-  exitDate: Date;
-  entryPrice: number;
-  exitPrice: number;
-  quantity: number;
-  return: number;
-  holdingPeriod: number;
-  signal: TradingSignal;
+export interface BacktestConfig {
+  strategy: {
+    name: string;
+    parameters?: Record<string, any>;
+  };
+  startDate: Date;
+  endDate: Date;
+  initialCapital: number;
+  symbols: string[];
+  parameters?: Record<string, any>;
 }
 
-export interface MarketSentiment {
-  ticker: string;
-  bullishScore: number; // 0-100
-  bearishScore: number; // 0-100
-  neutralScore: number; // 0-100
-  volatilityIndex: number;
-  fearGreedIndex?: number;
-  newsAnalysis?: NewsAnalysis;
-  socialMediaSentiment?: SocialMediaSentiment;
+export interface RiskMetrics {
+  portfolioRisk: number;
+  varDaily: number; // Value at Risk (1 Tag, 95% Konfidenz)
+  varWeekly: number; // Value at Risk (1 Woche, 95% Konfidenz)
+  sharpeRatio: number;
+  sortinoRatio: number;
+  maxDrawdown: number;
+  volatility: number;
+  beta: number; // Beta zum Markt (S&P 500 als Proxy)
+  correlationMatrix: { [ticker: string]: { [ticker: string]: number } };
+  concentrationRisk: number;
+  liquidityRisk: number;
+  var: number; // Value at Risk
+  cvar: number; // Conditional Value at Risk
+  correlations: Record<string, number>;
+}
+
+export interface RiskLimits {
+  maxPositionSize: number; // % des Portfolios
+  maxSectorExposure: number; // % des Portfolios
+  maxDrawdown: number; // %
+  minLiquidity: number; // Mindest-Cash-Anteil
+  maxLeverage: number; // Maximum Leverage Ratio
+  maxCorrelation: number; // Max Korrelation zwischen Positionen
+  stopLossLevel: number; // % für automatische Stop-Loss
+}
+
+export interface RiskAlert {
+  id: string;
+  type: 'POSITION_SIZE' | 'CONCENTRATION' | 'DRAWDOWN' | 'CORRELATION' | 'VOLATILITY' | 'LIQUIDITY';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  message: string;
+  metric: string;
+  currentValue: number;
+  threshold: number;
+  timestamp: Date;
+  ticker?: string;
+  value?: number;
+  portfolioId?: string;
+}
+
+export interface SectorExposure {
+  sector: string;
+  exposure: number;
+  percentage: number;
+  value: number;
+  tickers: string[];
+}
+
+export interface RiskAssessment {
+  portfolioId: string;
+  riskScore: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  metrics: RiskMetrics;
+  alerts: RiskAlert[];
+  sectorExposure: SectorExposure[];
+  recommendations: string[];
   timestamp: Date;
 }
 
-export interface NewsAnalysis {
-  positiveCount: number;
-  negativeCount: number;
-  neutralCount: number;
-  overallSentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
-  keyTopics: string[];
-  sources: string[];
+export interface MonitoringMetrics {
+  timestamp: Date;
+  systemHealth: 'healthy' | 'warning' | 'critical';
+  memoryUsage: number;
+  cpuUsage: number;
+  apiResponseTime: number;
+  errorRate: number;
+  activeConnections: number;
 }
 
-export interface SocialMediaSentiment {
-  twitterScore?: number;
-  redditScore?: number;
-  mentions: number;
-  trending: boolean;
+export interface Alert {
+  id: string;
+  type: 'system' | 'portfolio' | 'risk' | 'performance';
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  message: string;
+  timestamp: Date;
+  resolved: boolean;
+  metadata?: Record<string, any>;
 }
 
-export interface DataQuality {
-  completeness: number; // 0-100
-  accuracy: number; // 0-100
-  freshness: number; // minutes since last update
-  consistency: number; // 0-100
-  issues: string[];
-  lastValidated: Date;
+// Additional interfaces for Risk Management
+export interface MarketSentiment {
+  overall: 'bullish' | 'bearish' | 'neutral';
+  vix: number;
+  fearGreedIndex: number;
+  timestamp: Date;
 }
 
 export interface SystemHealth {
-  status: "HEALTHY" | "WARNING" | "ERROR";
-  uptime: number; // seconds
-  memoryUsage: number; // MB
-  cpuUsage: number; // percentage
-  diskUsage: number; // percentage
-  apiStatus: Map<string, "UP" | "DOWN" | "DEGRADED">;
-  lastHealthCheck: Date;
-  alerts: SystemAlert[];
+  status: 'healthy' | 'warning' | 'critical';
+  uptime: number;
+  memoryUsage: number;
+  cpuUsage: number;
+  diskUsage: number;
+  timestamp: Date;
 }
 
 export interface SystemAlert {
-  level: "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+  id: string;
+  type: 'system' | 'portfolio' | 'risk' | 'performance';
+  severity: 'info' | 'warning' | 'error' | 'critical';
   message: string;
-  component: string;
   timestamp: Date;
-  resolved?: boolean;
+  resolved: boolean;
+  metadata?: Record<string, any>;
 }

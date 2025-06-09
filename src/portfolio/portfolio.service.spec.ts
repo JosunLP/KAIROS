@@ -245,24 +245,19 @@ describe("PortfolioService", () => {
     });
   });
 
-  describe("updatePortfolioValues", () => {
-    it("should update portfolio with current market values", async () => {
+  describe("calculatePortfolioMetrics", () => {
+    it("should calculate portfolio metrics", async () => {
       const portfolioWithPosition = {
         ...mockPortfolio,
         positions: [mockPosition],
       };
 
-      mockPrismaService.portfolio.findUnique.mockResolvedValue(
-        portfolioWithPosition,
-      );
-      mockPrismaService.portfolio.update.mockResolvedValue(
-        portfolioWithPosition,
-      );
-
-      const result = await service.updatePortfolioValues("test-portfolio-1");
+      const result = await service.calculatePortfolioMetrics(portfolioWithPosition);
 
       expect(result).toBeDefined();
-      expect(mockPrismaService.portfolio.update).toHaveBeenCalled();
+      expect(result.totalValue).toBeGreaterThan(0);
+      expect(result.totalReturn).toBeDefined();
+      expect(result.dailyReturn).toBeDefined();
     });
   });
 });

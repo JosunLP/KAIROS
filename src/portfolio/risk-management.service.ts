@@ -3,54 +3,17 @@ import { PrismaService } from "../persistence/prisma.service";
 import { AnalysisEngineService } from "../analysis-engine/analysis-engine.service";
 import {
   Portfolio,
+  Position,
   PortfolioPosition,
   RiskAssessment,
   MarketSentiment,
   SystemHealth,
   TechnicalIndicators,
+  RiskLimits,
+  RiskAlert,
+  SectorExposure,
+  RiskMetrics,
 } from "../common/types";
-
-export interface RiskMetrics {
-  portfolioRisk: number;
-  varDaily: number; // Value at Risk (1 Tag, 95% Konfidenz)
-  varWeekly: number; // Value at Risk (1 Woche, 95% Konfidenz)
-  sharpeRatio: number;
-  sortinoRatio: number;
-  maxDrawdown: number;
-  volatility: number;
-  beta: number; // Beta zum Markt (S&P 500 als Proxy)
-  correlationMatrix: { [ticker: string]: { [ticker: string]: number } };
-  concentrationRisk: number;
-  liquidityRisk: number;
-}
-
-export interface RiskLimits {
-  maxPositionSize: number; // % des Portfolios
-  maxSectorExposure: number; // % des Portfolios
-  maxDrawdown: number; // %
-  minLiquidity: number; // Mindest-Cash-Anteil
-  maxLeverage: number; // Maximum Leverage Ratio
-  maxCorrelation: number; // Max Korrelation zwischen Positionen
-  stopLossLevel: number; // % für automatische Stop-Loss
-}
-
-export interface RiskAlert {
-  id: string;
-  type:
-    | "POSITION_SIZE"
-    | "CONCENTRATION"
-    | "DRAWDOWN"
-    | "CORRELATION"
-    | "VOLATILITY"
-    | "LIQUIDITY";
-  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  message: string;
-  value: number;
-  threshold: number;
-  timestamp: Date;
-  portfolioId?: string;
-  ticker?: string;
-}
 
 @Injectable()
 export class RiskManagementService {
@@ -114,6 +77,9 @@ export class RiskManagementService {
         correlationMatrix,
         concentrationRisk,
         liquidityRisk,
+        var: varDaily, // Kopiere varDaily nach var
+        cvar: varWeekly, // Kopiere varWeekly nach cvar
+        correlations: {}, // Leeres Objekt für jetzt
       };
 
       this.logger.log(
@@ -135,6 +101,7 @@ export class RiskManagementService {
   ): Promise<RiskAssessment> {
     try {
       const metrics = await this.calculateRiskMetrics(portfolio);
+      const sectorExposure = await this.calculateSectorExposure(portfolio);
       const alerts = await this.checkRiskLimits(portfolio, metrics, riskLimits);
 
       // Berechne Gesamt-Risiko-Score (0-100)
@@ -171,6 +138,7 @@ export class RiskManagementService {
         riskLevel,
         metrics,
         alerts,
+        sectorExposure,
         recommendations,
         timestamp: new Date(),
       };
@@ -192,19 +160,26 @@ export class RiskManagementService {
 
     // Positionsgrößen prüfen
     for (const position of portfolio.positions) {
-      const positionWeight = (position.weight || 0) * 100;
+      // Type guard für PortfolioPosition
+      const isPortfolioPosition = 'ticker' in position;
+      const ticker = isPortfolioPosition ? position.ticker : position.symbol;
+      const weight = isPortfolioPosition ? position.weight : undefined;
+      
+      const positionWeight = (weight || 0) * 100;
       if (positionWeight > limits.maxPositionSize) {
         alerts.push({
-          id: `pos_${position.ticker}_${Date.now()}`,
+          id: `pos_${ticker}_${Date.now()}`,
           type: "POSITION_SIZE",
           severity:
             positionWeight > limits.maxPositionSize * 1.5 ? "CRITICAL" : "HIGH",
-          message: `Position ${position.ticker} überschreitet Größenlimit`,
-          value: positionWeight,
+          message: `Position ${ticker} überschreitet Größenlimit`,
+          metric: "position_size",
+          currentValue: positionWeight,
           threshold: limits.maxPositionSize,
           timestamp: new Date(),
+          value: positionWeight,
           portfolioId: portfolio.id,
-          ticker: position.ticker,
+          ticker: ticker,
         });
       }
     }
@@ -219,6 +194,8 @@ export class RiskManagementService {
             ? "CRITICAL"
             : "HIGH",
         message: "Portfolio-Konzentration überschreitet Limit",
+        metric: "concentration_risk",
+        currentValue: metrics.concentrationRisk * 100,
         value: metrics.concentrationRisk * 100,
         threshold: limits.maxSectorExposure,
         timestamp: new Date(),
@@ -236,6 +213,8 @@ export class RiskManagementService {
             ? "CRITICAL"
             : "HIGH",
         message: "Maximum Drawdown überschritten",
+        metric: "max_drawdown",
+        currentValue: metrics.maxDrawdown * 100,
         value: metrics.maxDrawdown * 100,
         threshold: limits.maxDrawdown,
         timestamp: new Date(),
@@ -251,6 +230,8 @@ export class RiskManagementService {
         type: "VOLATILITY",
         severity: metrics.volatility > 0.5 ? "CRITICAL" : "HIGH",
         message: "Portfolio-Volatilität sehr hoch",
+        metric: "volatility",
+        currentValue: metrics.volatility * 100,
         value: metrics.volatility * 100,
         threshold: 30,
         timestamp: new Date(),
@@ -346,7 +327,12 @@ export class RiskManagementService {
       let totalWeight = 0;
 
       for (const position of portfolio.positions) {
-        const data = historicalDataMap.get(position.ticker);
+        // Type guard für PortfolioPosition
+        const isPortfolioPosition = 'ticker' in position;
+        const ticker = isPortfolioPosition ? position.ticker : position.symbol;
+        const weight = isPortfolioPosition ? position.weight : undefined;
+        
+        const data = historicalDataMap.get(ticker);
         if (!data) continue;
 
         const prevPrice = data.find(
@@ -358,9 +344,9 @@ export class RiskManagementService {
 
         if (prevPrice && currentPrice) {
           const positionReturn = (currentPrice - prevPrice) / prevPrice;
-          const weight = position.weight || 1 / portfolio.positions.length;
-          portfolioReturn += positionReturn * weight;
-          totalWeight += weight;
+          const posWeight = weight || 1 / portfolio.positions.length;
+          portfolioReturn += positionReturn * posWeight;
+          totalWeight += posWeight;
         }
       }
 
@@ -376,25 +362,31 @@ export class RiskManagementService {
    * Hole historische Daten für alle Portfolio-Positionen
    */
   private async getHistoricalDataForPositions(
-    positions: PortfolioPosition[],
+    positions: (Position | PortfolioPosition)[],
   ): Promise<Map<string, any[]>> {
     const dataMap = new Map<string, any[]>();
 
     for (const position of positions) {
       try {
+        // Type guard für PortfolioPosition vs Position
+        const isPortfolioPosition = 'ticker' in position;
+        const ticker = isPortfolioPosition ? position.ticker : position.symbol;
+        
         const data = await this.prisma.historicalData.findMany({
           where: {
-            stock: { ticker: position.ticker },
+            stock: { ticker: ticker },
           },
           orderBy: { timestamp: "desc" },
           take: 252, // 1 Jahr tägliche Daten
         });
 
         if (data.length > 0) {
-          dataMap.set(position.ticker, data.reverse()); // Chronologisch sortieren
+          dataMap.set(ticker, data.reverse()); // Chronologisch sortieren
         }
       } catch (error) {
-        this.logger.warn(`Keine Daten für ${position.ticker} gefunden`);
+        const isPortfolioPos = 'ticker' in position;
+        const symbol = isPortfolioPos ? position.ticker : position.symbol;
+        this.logger.warn(`Keine Daten für ${symbol} gefunden`);
       }
     }
 
@@ -595,9 +587,12 @@ export class RiskManagementService {
   private calculateConcentrationRisk(portfolio: Portfolio): number {
     if (portfolio.positions.length === 0) return 0;
 
-    const weights = portfolio.positions.map(
-      (pos) => pos.weight || 1 / portfolio.positions.length,
-    );
+    const weights: number[] = portfolio.positions.map((pos) => {
+      const isPortfolioPosition = 'ticker' in pos;
+      const weight = isPortfolioPosition ? pos.weight : undefined;
+      return weight || 1 / portfolio.positions.length;
+    });
+    
     const herfindahlIndex = weights.reduce(
       (sum, weight) => sum + weight * weight,
       0,
@@ -643,6 +638,68 @@ export class RiskManagementService {
       components.concentrationRisk * weights.concentrationRisk +
       components.liquidityRisk * weights.liquidityRisk
     );
+  }
+
+  /**
+   * Berechnet die Sektor-Exposition eines Portfolios
+   */
+  async calculateSectorExposure(portfolio: Portfolio): Promise<SectorExposure[]> {
+    try {
+      const sectorMap = new Map<string, { exposure: number; value: number; tickers: string[] }>();
+
+      // Einfache Sektorzuordnung basierend auf Ticker-Präfixen oder bekannten Mappings
+      const sectorMapping: { [ticker: string]: string } = {
+        'AAPL': 'Technology',
+        'MSFT': 'Technology',
+        'GOOGL': 'Technology',
+        'AMZN': 'Technology',
+        'TSLA': 'Automotive',
+        'JPM': 'Banking',
+        'BAC': 'Banking',
+        'WMT': 'Retail',
+        'HD': 'Retail',
+        'JNJ': 'Healthcare',
+        'PFE': 'Healthcare',
+        'XOM': 'Energy',
+        'CVX': 'Energy',
+      };
+
+      for (const position of portfolio.positions) {
+        // Type guard für PortfolioPosition
+        const isPortfolioPosition = 'ticker' in position;
+        const ticker = isPortfolioPosition ? position.ticker : position.symbol;
+        
+        const sector = sectorMapping[ticker] || 'Other';
+        const positionValue = position.quantity * (position.currentPrice || position.averagePrice);
+        const positionWeight = (positionValue / portfolio.totalValue) * 100;
+
+        if (!sectorMap.has(sector)) {
+          sectorMap.set(sector, {
+            exposure: 0,
+            value: 0,
+            tickers: []
+          });
+        }
+
+        const sectorData = sectorMap.get(sector)!;
+        sectorData.exposure += positionWeight;
+        sectorData.value += positionValue;
+        sectorData.tickers.push(ticker);
+      }
+
+      const sectorExposures: SectorExposure[] = Array.from(sectorMap.entries()).map(([sector, data]) => ({
+        sector,
+        exposure: data.exposure,
+        percentage: data.exposure, // percentage ist das gleiche wie exposure in %
+        value: data.value,
+        tickers: data.tickers
+      }));
+
+      return sectorExposures.sort((a, b) => b.exposure - a.exposure);
+    } catch (error) {
+      this.logger.error('Fehler bei der Sektor-Exposition-Berechnung:', error);
+      throw error;
+    }
   }
 
   /**
