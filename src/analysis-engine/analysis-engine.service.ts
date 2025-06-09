@@ -131,7 +131,9 @@ export class AnalysisEngineService {
           updateData.bollMid = indicators.bollinger[indicatorIndex].middle;
         }
         if (indicators.adx && indicators.adx[indicatorIndex] !== undefined) {
-          updateData.adx = indicators.adx[indicatorIndex];
+          // ADX liefert ein Objekt zurück, wir speichern nur den ADX-Wert
+          const adxValue = indicators.adx[indicatorIndex];
+          updateData.adx = typeof adxValue === 'object' ? adxValue.adx : adxValue;
         }
         if (indicators.cci && indicators.cci[indicatorIndex] !== undefined) {
           updateData.cci = indicators.cci[indicatorIndex];
@@ -808,7 +810,9 @@ export class AnalysisEngineService {
       if (indicators.adx && i >= adxOffset) {
         const adxIndex = i - adxOffset;
         if (adxIndex < indicators.adx.length) {
-          updateData.adx = indicators.adx[adxIndex];
+          // ADX liefert ein Objekt zurück, wir speichern nur den ADX-Wert
+          const adxValue = indicators.adx[adxIndex];
+          updateData.adx = typeof adxValue === 'object' ? adxValue.adx : adxValue;
         }
       }
 
