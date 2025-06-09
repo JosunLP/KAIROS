@@ -1,3 +1,14 @@
+// Stock data interface for historical data
+export interface StockData {
+  symbol: string;
+  timestamp: Date;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 // Common types for KAIROS application
 
 export interface HistoricalDataPoint {
@@ -45,6 +56,15 @@ export interface Prediction {
   confidence: number;
   time_horizon: string;
   model_version: string;
+}
+
+export interface PredictionResult {
+  symbol: string;
+  prediction: number;
+  confidence: number;
+  timestamp: Date;
+  model: string;
+  features: Record<string, number>;
 }
 
 export interface Position {
@@ -106,6 +126,7 @@ export interface BacktestTrade {
   type: 'BUY' | 'SELL';
   quantity: number;
   price: number;
+  entryPrice?: number; // For backward compatibility
   timestamp: Date;
   commission?: number;
   slippage?: number;
@@ -131,6 +152,7 @@ export interface BacktestResult {
   endDate: Date;
   initialCapital: number;
   finalValue: number;
+  finalCapital: number; // Alias für finalValue für Backward-Kompatibilität
   strategy: string; // Strategy name
   ticker?: string; // Symbol or "OVERALL" for portfolio-wide results
 }
@@ -148,20 +170,24 @@ export interface BacktestConfig {
 }
 
 export interface RiskMetrics {
-  portfolioRisk: number;
-  varDaily: number; // Value at Risk (1 Tag, 95% Konfidenz)
-  varWeekly: number; // Value at Risk (1 Woche, 95% Konfidenz)
+  portfolioRisk?: number;
+  varDaily?: number; // Value at Risk (1 Tag, 95% Konfidenz)
+  varWeekly?: number; // Value at Risk (1 Woche, 95% Konfidenz)
   sharpeRatio: number;
-  sortinoRatio: number;
+  sortinoRatio?: number;
   maxDrawdown: number;
   volatility: number;
   beta: number; // Beta zum Markt (S&P 500 als Proxy)
-  correlationMatrix: { [ticker: string]: { [ticker: string]: number } };
+  correlationMatrix?: { [ticker: string]: { [ticker: string]: number } };
   concentrationRisk: number;
-  liquidityRisk: number;
-  var: number; // Value at Risk
-  cvar: number; // Conditional Value at Risk
-  correlations: Record<string, number>;
+  liquidityRisk?: number;
+  var?: number; // Value at Risk
+  cvar?: number; // Conditional Value at Risk
+  correlations?: Record<string, number>;
+  sectorExposure: SectorExposure[];
+  liquidity: number;
+  leverage: number;
+  correlation: number;
 }
 
 export interface RiskLimits {
@@ -202,9 +228,13 @@ export interface RiskAssessment {
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   metrics: RiskMetrics;
   alerts: RiskAlert[];
-  sectorExposure: SectorExposure[];
   recommendations: string[];
   timestamp: Date;
+  compliance: {
+    isCompliant: boolean;
+    violations: number;
+    lastCheck: Date;
+  };
 }
 
 export interface MonitoringMetrics {
@@ -252,4 +282,14 @@ export interface SystemAlert {
   timestamp: Date;
   resolved: boolean;
   metadata?: Record<string, any>;
+}
+
+export interface TrainingStatus {
+  isTraining: boolean;
+  progress: number;
+  epoch: number;
+  loss: number;
+  accuracy: number;
+  estimatedTimeRemaining: number;
+  status: 'IDLE' | 'TRAINING' | 'COMPLETE' | 'ERROR';
 }

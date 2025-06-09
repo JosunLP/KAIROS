@@ -341,13 +341,21 @@ export class PortfolioService {
           var: 0, // Vereinfacht für Demo
           cvar: 0, // Vereinfacht für Demo
           liquidityRisk: 0, // Vereinfacht für Demo
+          sectorExposure: [], // Vereinfacht für Demo
+          liquidity: 0.8,
+          leverage: 1.0,
+          correlation: 0.6
         },
-        sectorExposure: [], // Vereinfacht für Demo
         alerts: [],
         recommendations: riskFactors.map(
           (factor) => `Überprüfen Sie: ${factor}`,
         ),
         timestamp: new Date(),
+        compliance: {
+          isCompliant: true,
+          violations: 0,
+          lastCheck: new Date()
+        }
       };
 
       return riskAssessment;
