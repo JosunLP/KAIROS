@@ -212,23 +212,25 @@ export class PortfolioService {
 
       // Berechne Gesamtwert
       let totalValue = 0;
-      const updatedPositions: PortfolioPosition[] = portfolio.positions.map((position) => {
-        const currentPrice =
-          currentPrices.get(position.ticker) || position.averagePrice;
-        const positionValue = position.quantity * currentPrice;
-        totalValue += positionValue;
+      const updatedPositions: PortfolioPosition[] = portfolio.positions.map(
+        (position) => {
+          const currentPrice =
+            currentPrices.get(position.ticker) || position.averagePrice;
+          const positionValue = position.quantity * currentPrice;
+          totalValue += positionValue;
 
-        return {
-          ...position,
-          currentPrice,
-          unrealizedPL:
-            positionValue - position.quantity * position.averagePrice,
-          unrealizedPnL:
-            positionValue - position.quantity * position.averagePrice,
-          value: positionValue,
-          weight: 0, // Wird später berechnet
-        };
-      });
+          return {
+            ...position,
+            currentPrice,
+            unrealizedPL:
+              positionValue - position.quantity * position.averagePrice,
+            unrealizedPnL:
+              positionValue - position.quantity * position.averagePrice,
+            value: positionValue,
+            weight: 0, // Wird später berechnet
+          };
+        },
+      );
 
       // Berechne Gewichtungen
       updatedPositions.forEach((position) => {
@@ -344,7 +346,7 @@ export class PortfolioService {
           sectorExposure: [], // Vereinfacht für Demo
           liquidity: 0.8,
           leverage: 1.0,
-          correlation: 0.6
+          correlation: 0.6,
         },
         alerts: [],
         recommendations: riskFactors.map(
@@ -354,8 +356,8 @@ export class PortfolioService {
         compliance: {
           isCompliant: true,
           violations: 0,
-          lastCheck: new Date()
-        }
+          lastCheck: new Date(),
+        },
       };
 
       return riskAssessment;
@@ -615,11 +617,15 @@ export class PortfolioService {
   }
 
   // Type Guards für Position-Interfaces
-  private isPortfolioPosition(position: Position | PortfolioPosition): position is PortfolioPosition {
-    return 'ticker' in position && 'lastUpdated' in position;
+  private isPortfolioPosition(
+    position: Position | PortfolioPosition,
+  ): position is PortfolioPosition {
+    return "ticker" in position && "lastUpdated" in position;
   }
 
-  private isPosition(position: Position | PortfolioPosition): position is Position {
-    return 'symbol' in position && !('ticker' in position);
+  private isPosition(
+    position: Position | PortfolioPosition,
+  ): position is Position {
+    return "symbol" in position && !("ticker" in position);
   }
 }

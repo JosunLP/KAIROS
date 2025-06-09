@@ -37,12 +37,27 @@ export interface PredictionMetrics {
   riskScore: number;
 }
 
+export interface ExtendedTrainingStatus extends TrainingStatus {
+  startTime?: Date;
+  currentEpoch?: number;
+  totalEpochs?: number;
+  shouldStop?: boolean;
+}
+
 @Injectable()
 export class MlPredictionService {
   private readonly logger = new Logger(MlPredictionService.name);
   private readonly modelDir = path.join(process.cwd(), "models");
   private models: Map<string, tf.LayersModel> = new Map();
-  private trainingStatus: TrainingStatus = { isTraining: false };
+  private trainingStatus: ExtendedTrainingStatus = { 
+    isTraining: false,
+    progress: 0,
+    epoch: 0,
+    loss: 0,
+    accuracy: 0,
+    estimatedTimeRemaining: 0,
+    status: "IDLE"
+  };
   private trainingAbortController?: AbortController;
 
   // Enhanced performance metrics
@@ -167,6 +182,12 @@ export class MlPredictionService {
     try {
       this.trainingStatus = {
         isTraining: true,
+        progress: 0,
+        epoch: 0,
+        loss: 0,
+        accuracy: 0,
+        estimatedTimeRemaining: 0,
+        status: "TRAINING",
         startTime: new Date(),
         currentEpoch: 0,
         totalEpochs: 100,
@@ -241,7 +262,7 @@ export class MlPredictionService {
   /**
    * Gibt den aktuellen Training-Status zurück
    */
-  getTrainingStatus(): TrainingStatus {
+  getTrainingStatus(): ExtendedTrainingStatus {
     return { ...this.trainingStatus };
   }
 
@@ -583,8 +604,8 @@ export class MlPredictionService {
         callbacks: {
           onEpochEnd: async (epoch, logs) => {
             this.trainingStatus.currentEpoch = epoch + 1;
-            this.trainingStatus.loss = logs?.loss;
-            this.trainingStatus.accuracy = logs?.acc;
+            this.trainingStatus.loss = logs?.loss || 0;
+            this.trainingStatus.accuracy = logs?.acc || 0;
 
             this.logger.log(
               `📊 Epoche ${epoch + 1}/${this.trainingStatus.totalEpochs} - ` +
@@ -734,11 +755,12 @@ export class MlPredictionService {
       const confidence = result[0];
       const direction = confidence > 0.5 ? 1 : -1;
       return {
-        ticker: ticker,
+        symbol: ticker,
+        prediction: direction,
         confidence,
-        direction,
         timestamp: new Date(),
-        targetPrice: undefined, // Könnte in der Zukunft implementiert werden
+        model: "lstm-v1",
+        features: {},
       };
     } catch (error) {
       this.logger.error("Fehler bei der Prognose-Erstellung:", error);

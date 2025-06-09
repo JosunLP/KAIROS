@@ -1283,7 +1283,12 @@ export class AnalysisEngineService {
     }
   }
 
-  public calculateMACD(values: number[], fastPeriod: number = 12, slowPeriod: number = 26, signalPeriod: number = 9) {
+  public calculateMACD(
+    values: number[],
+    fastPeriod: number = 12,
+    slowPeriod: number = 26,
+    signalPeriod: number = 9,
+  ) {
     try {
       return TI.MACD.calculate({
         fastPeriod,
@@ -1299,7 +1304,11 @@ export class AnalysisEngineService {
     }
   }
 
-  public calculateBollingerBands(values: number[], period: number = 20, stdDev: number = 2) {
+  public calculateBollingerBands(
+    values: number[],
+    period: number = 20,
+    stdDev: number = 2,
+  ) {
     try {
       return TI.BollingerBands.calculate({
         period,
@@ -1318,26 +1327,26 @@ export class AnalysisEngineService {
         where: { ticker: symbol },
         include: {
           historicalData: {
-            orderBy: { timestamp: 'desc' },
-            take: 50
-          }
-        }
+            orderBy: { timestamp: "desc" },
+            take: 50,
+          },
+        },
       });
 
       if (!stock || stock.historicalData.length === 0) {
         throw new Error(`No data found for symbol: ${symbol}`);
       }
 
-      const closes = stock.historicalData.reverse().map(d => d.close);
-      const highs = stock.historicalData.map(d => d.high);
-      const lows = stock.historicalData.map(d => d.low);
+      const closes = stock.historicalData.reverse().map((d) => d.close);
+      const highs = stock.historicalData.map((d) => d.high);
+      const lows = stock.historicalData.map((d) => d.low);
 
       const indicators = {
         sma: this.calculateSMA(closes, 20),
         ema: this.calculateEMA(closes, 20),
         rsi: this.calculateRSI(closes, 14),
         macd: this.calculateMACD(closes),
-        bollingerBands: this.calculateBollingerBands(closes)
+        bollingerBands: this.calculateBollingerBands(closes),
       };
 
       return {
@@ -1346,7 +1355,7 @@ export class AnalysisEngineService {
         indicators,
         signals: this.generateSignals(indicators, closes),
         confidence: this.calculateConfidence(indicators),
-        recommendation: this.generateRecommendation(indicators, closes)
+        recommendation: this.generateRecommendation(indicators, closes),
       };
     } catch (error) {
       this.logger.error(`Fehler bei der Analyse von ${symbol}:`, error);
@@ -1357,14 +1366,14 @@ export class AnalysisEngineService {
   private generateSignals(indicators: any, closes: number[]): string[] {
     const signals: string[] = [];
     const currentPrice = closes[closes.length - 1];
-    
+
     // RSI Signale
     if (indicators.rsi.length > 0) {
       const currentRSI = indicators.rsi[indicators.rsi.length - 1];
       if (currentRSI > 70) {
-        signals.push('RSI_OVERBOUGHT');
+        signals.push("RSI_OVERBOUGHT");
       } else if (currentRSI < 30) {
-        signals.push('RSI_OVERSOLD');
+        signals.push("RSI_OVERSOLD");
       }
     }
 
@@ -1372,9 +1381,9 @@ export class AnalysisEngineService {
     if (indicators.sma.length > 0) {
       const currentSMA = indicators.sma[indicators.sma.length - 1];
       if (currentPrice > currentSMA) {
-        signals.push('PRICE_ABOVE_SMA');
+        signals.push("PRICE_ABOVE_SMA");
       } else {
-        signals.push('PRICE_BELOW_SMA');
+        signals.push("PRICE_BELOW_SMA");
       }
     }
 
@@ -1396,21 +1405,21 @@ export class AnalysisEngineService {
 
   private generateRecommendation(indicators: any, closes: number[]): string {
     const signals = this.generateSignals(indicators, closes);
-    
-    const bullishSignals = signals.filter(s => 
-      s.includes('OVERSOLD') || s.includes('ABOVE')
+
+    const bullishSignals = signals.filter(
+      (s) => s.includes("OVERSOLD") || s.includes("ABOVE"),
     ).length;
-    
-    const bearishSignals = signals.filter(s => 
-      s.includes('OVERBOUGHT') || s.includes('BELOW')
+
+    const bearishSignals = signals.filter(
+      (s) => s.includes("OVERBOUGHT") || s.includes("BELOW"),
     ).length;
 
     if (bullishSignals > bearishSignals) {
-      return 'BUY';
+      return "BUY";
     } else if (bearishSignals > bullishSignals) {
-      return 'SELL';
+      return "SELL";
     } else {
-      return 'HOLD';
+      return "HOLD";
     }
   }
 }

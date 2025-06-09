@@ -16,7 +16,7 @@ describe("RiskManagementService", () => {
     minLiquidity: 0.05,
     maxLeverage: 2.0,
     maxCorrelation: 0.8,
-    stopLossLevel: 0.10,
+    stopLossLevel: 0.1,
   };
 
   const mockPosition: PortfolioPosition = {
@@ -27,7 +27,7 @@ describe("RiskManagementService", () => {
     unrealizedPL: 500,
     weight: 0.3,
     lastUpdated: new Date(),
-    symbol: ""
+    symbol: "",
   };
 
   const mockPortfolio: Portfolio = {
@@ -129,7 +129,13 @@ describe("RiskManagementService", () => {
         ...mockPortfolio,
         totalValue: 50000,
         positions: [
-          { ...mockPosition, ticker: "AAPL", quantity: 100, averagePrice: 500, currentPrice: 500 }, // 50000 value = 100% concentration
+          {
+            ...mockPosition,
+            ticker: "AAPL",
+            quantity: 100,
+            averagePrice: 500,
+            currentPrice: 500,
+          }, // 50000 value = 100% concentration
         ],
       };
 
@@ -191,25 +197,48 @@ describe("RiskManagementService", () => {
         ...mockPortfolio,
         totalValue: 100000, // Set a total value
         positions: [
-          { ...mockPosition, ticker: "AAPL", quantity: 100, averagePrice: 150, currentPrice: 150 }, // 15000 value = 15%
-          { ...mockPosition, ticker: "MSFT", quantity: 200, averagePrice: 300, currentPrice: 300 }, // 60000 value = 60%  
-          { ...mockPosition, ticker: "JPM", quantity: 125, averagePrice: 200, currentPrice: 200 }, // 25000 value = 25%
+          {
+            ...mockPosition,
+            ticker: "AAPL",
+            quantity: 100,
+            averagePrice: 150,
+            currentPrice: 150,
+          }, // 15000 value = 15%
+          {
+            ...mockPosition,
+            ticker: "MSFT",
+            quantity: 200,
+            averagePrice: 300,
+            currentPrice: 300,
+          }, // 60000 value = 60%
+          {
+            ...mockPosition,
+            ticker: "JPM",
+            quantity: 125,
+            averagePrice: 200,
+            currentPrice: 200,
+          }, // 25000 value = 25%
         ],
       };
 
-      const sectorExposure =
-        await service.calculateSectorExposure(multiSectorPortfolio.positions);
+      const sectorExposure = await service.calculateSectorExposure(
+        multiSectorPortfolio.positions,
+      );
 
       expect(sectorExposure).toBeInstanceOf(Array);
       expect(sectorExposure.length).toBeGreaterThan(0);
-      
+
       // Find Technology sector (AAPL + MSFT = 15% + 60% = 75%)
-      const techSector = sectorExposure.find((s: any) => s.sector === 'Technology');
+      const techSector = sectorExposure.find(
+        (s: any) => s.sector === "Technology",
+      );
       expect(techSector).toBeDefined();
       expect(techSector!.percentage).toBeCloseTo(75, 1); // Should be ~75% (15% + 60%)
-      
+
       // Find Banking sector (JPM = 25%)
-      const bankSector = sectorExposure.find((s: any) => s.sector === 'Banking');
+      const bankSector = sectorExposure.find(
+        (s: any) => s.sector === "Banking",
+      );
       expect(bankSector).toBeDefined();
       expect(bankSector!.percentage).toBeCloseTo(25, 1); // Should be ~25%
     });
@@ -219,15 +248,22 @@ describe("RiskManagementService", () => {
         ...mockPortfolio,
         totalValue: 50000,
         positions: [
-          { ...mockPosition, ticker: "UNKNOWN", quantity: 100, averagePrice: 500, currentPrice: 500 }, // Will map to 'Other'
+          {
+            ...mockPosition,
+            ticker: "UNKNOWN",
+            quantity: 100,
+            averagePrice: 500,
+            currentPrice: 500,
+          }, // Will map to 'Other'
         ],
       };
 
-      const sectorExposure =
-        await service.calculateSectorExposure(unknownSectorPortfolio.positions);
+      const sectorExposure = await service.calculateSectorExposure(
+        unknownSectorPortfolio.positions,
+      );
 
       expect(sectorExposure).toBeInstanceOf(Array);
-      const otherSector = sectorExposure.find((s: any) => s.sector === 'Other');
+      const otherSector = sectorExposure.find((s: any) => s.sector === "Other");
       expect(otherSector).toBeDefined();
       expect(otherSector!.percentage).toBeCloseTo(100, 1); // Should be 100% since it's the only position
     });
@@ -240,8 +276,11 @@ describe("RiskManagementService", () => {
         new Error("Database error"),
       );
 
-      const assessment = await service.assessPortfolioRisk(mockPortfolio, mockRiskLimits);
-      
+      const assessment = await service.assessPortfolioRisk(
+        mockPortfolio,
+        mockRiskLimits,
+      );
+
       // Der Service sollte trotzdem ein Assessment zurückgeben, auch wenn die DB fehlschlägt
       expect(assessment).toBeDefined();
       expect(assessment.riskLevel).toBeDefined();
@@ -252,8 +291,10 @@ describe("RiskManagementService", () => {
       mockPrismaService.historicalData.findMany.mockResolvedValue([]);
       mockPrismaService.stock.findMany.mockResolvedValue([]);
 
-      const assessment: RiskAssessment =
-        await service.assessPortfolioRisk(mockPortfolio, mockRiskLimits);
+      const assessment: RiskAssessment = await service.assessPortfolioRisk(
+        mockPortfolio,
+        mockRiskLimits,
+      );
 
       expect(assessment).toBeDefined();
       expect(assessment.riskLevel).toMatch(/LOW|MEDIUM|HIGH/); // Accept any reasonable risk level when data insufficient

@@ -6,6 +6,15 @@ import { PrismaService } from "../persistence/prisma.service";
 import { PortfolioService } from "../portfolio/portfolio.service";
 import { BacktestService } from "../portfolio/backtest.service";
 import { RiskManagementService } from "../portfolio/risk-management.service";
+import { TrainingStatus } from "../common/types";
+
+// Erweiterte TrainingStatus Interface für erweiterte CLI Funktionen
+interface ExtendedTrainingStatus extends TrainingStatus {
+  startTime?: Date;
+  currentEpoch?: number;
+  totalEpochs?: number;
+  shouldStop?: boolean;
+}
 import { PredictionResult } from "../common/types";
 
 @Injectable()
@@ -196,15 +205,9 @@ export class SimpleCliService {
           `🎲 Konfidenz: ${(prediction.confidence * 100).toFixed(1)}%`,
         );
         console.log(
-          `💹 Prognostizierte Richtung: ${prediction.direction > 0 ? "📈 Aufwärts" : "📉 Abwärts"}`,
+          `💹 Prognostizierte Richtung: ${prediction.prediction > 0 ? "📈 Aufwärts" : "📉 Abwärts"}`,
         );
         console.log(`🕐 Zeitstempel: ${prediction.timestamp.toLocaleString()}`);
-
-        if (prediction.targetPrice) {
-          console.log(
-            `💰 Prognostizierter Preis: $${prediction.targetPrice.toFixed(2)}`,
-          );
-        }
 
         console.log("\n⚠️  Disclaimer: Dies ist keine Anlageberatung!");
       } else {
@@ -853,10 +856,13 @@ export class SimpleCliService {
       }
 
       const tickers = stocks.map((s) => s.ticker);
-      const results = await this.backtestService.runBacktest(tickers, config);
+      const results = await this.backtestService.runBacktest({
+        ...config,
+        symbols: tickers,
+      });
 
-      // Nimm das letzte Ergebnis als Gesamt-Ergebnis (Overall Performance)
-      const result = results[results.length - 1];
+      // Das Ergebnis ist direkt ein BacktestResult Objekt, kein Array
+      const result = results;
       if (!result) {
         console.log("❌ Keine Backtest-Ergebnisse erhalten");
         return;
@@ -928,14 +934,14 @@ export class SimpleCliService {
 
       console.log("📈 Risiko-Kennzahlen:");
       console.log(
-        `   Portfolio-Risiko: ${(riskMetrics.portfolioRisk * 100).toFixed(2)}%`,
+        `   Portfolio-Risiko: ${((riskMetrics.portfolioRisk || 0) * 100).toFixed(2)}%`,
       );
-      console.log(`   VaR (1 Tag, 95%): $${riskMetrics.varDaily.toFixed(2)}`);
+      console.log(`   VaR (1 Tag, 95%): $${(riskMetrics.varDaily || 0).toFixed(2)}`);
       console.log(
-        `   VaR (1 Woche, 95%): $${riskMetrics.varWeekly.toFixed(2)}`,
+        `   VaR (1 Woche, 95%): $${(riskMetrics.varWeekly || 0).toFixed(2)}`,
       );
       console.log(`   Sharpe Ratio: ${riskMetrics.sharpeRatio.toFixed(2)}`);
-      console.log(`   Sortino Ratio: ${riskMetrics.sortinoRatio.toFixed(2)}`);
+      console.log(`   Sortino Ratio: ${(riskMetrics.sortinoRatio || 0).toFixed(2)}`);
       console.log(
         `   Max Drawdown: ${(riskMetrics.maxDrawdown * 100).toFixed(2)}%`,
       );
