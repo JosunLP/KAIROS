@@ -98,10 +98,10 @@ export class ConfigService {
       "./logs/kairos.log",
     );
   }
-
   // Validierung der Konfiguration
   validateConfig(): boolean {
     const errors: string[] = [];
+    const warnings: string[] = [];
 
     // Prüfe ob mindestens ein API-Key vorhanden ist
     if (
@@ -125,6 +125,56 @@ export class ConfigService {
 
     if (this.mlSequenceLength < 5 || this.mlSequenceLength > 100) {
       errors.push("ML_SEQUENCE_LENGTH muss zwischen 5 und 100 liegen");
+    }
+
+    // Prüfe Trading Limits
+    if (this.maxTradeAmount <= this.minTradeAmount) {
+      errors.push("MAX_TRADE_AMOUNT muss größer als MIN_TRADE_AMOUNT sein");
+    }
+
+    if (this.maxPortfolioRisk < 1 || this.maxPortfolioRisk > 100) {
+      errors.push("MAX_PORTFOLIO_RISK muss zwischen 1 und 100 liegen");
+    }
+
+    if (this.maxPositionSize < 1 || this.maxPositionSize > 50) {
+      errors.push("MAX_POSITION_SIZE muss zwischen 1 und 50 liegen");
+    }
+
+    // Prüfe Security Settings in Production
+    if (this.isProduction) {
+      if (this.encryptionKey === "default-key-change-in-production") {
+        errors.push("ENCRYPTION_KEY muss in Produktion geändert werden");
+      }
+
+      if (this.sessionSecret === "default-secret-change-in-production") {
+        errors.push("SESSION_SECRET muss in Produktion geändert werden");
+      }
+
+      if (!this.enableApiAuth) {
+        warnings.push("API-Authentifizierung ist in Produktion deaktiviert");
+      }
+    }
+
+    // Prüfe Performance Settings
+    if (this.cacheMaxSize < 100 || this.cacheMaxSize > 100000) {
+      warnings.push("CACHE_MAX_SIZE sollte zwischen 100 und 100000 liegen");
+    }
+
+    if (this.cacheTtl < 60 || this.cacheTtl > 3600) {
+      warnings.push("CACHE_TTL sollte zwischen 60 und 3600 Sekunden liegen");
+    }
+
+    // Prüfe Notification Settings
+    if (this.enableEmailNotifications && !this.notificationEmail) {
+      warnings.push(
+        "Email-Benachrichtigungen aktiviert, aber keine E-Mail-Adresse konfiguriert",
+      );
+    }
+
+    // Warnungen ausgeben
+    if (warnings.length > 0) {
+      this.logger.warn("Konfigurationswarnungen:");
+      warnings.forEach((warning) => this.logger.warn(` - ${warning}`));
     }
 
     // Fehler ausgeben falls vorhanden
@@ -162,5 +212,177 @@ export class ConfigService {
       default:
         throw new Error(`Unbekannter Provider: ${provider}`);
     }
+  }
+
+  // Cache Konfiguration
+  get cacheEnabled(): boolean {
+    return this.nestConfigService.get<boolean>("CACHE_ENABLED", true);
+  }
+
+  get cacheTtl(): number {
+    return this.nestConfigService.get<number>("CACHE_TTL", 300); // 5 Minuten
+  }
+
+  get cacheMaxSize(): number {
+    return this.nestConfigService.get<number>("CACHE_MAX_SIZE", 1000);
+  }
+
+  // Performance Monitoring
+  get enablePerformanceMonitoring(): boolean {
+    return this.nestConfigService.get<boolean>(
+      "ENABLE_PERFORMANCE_MONITORING",
+      true,
+    );
+  }
+
+  get performanceMetricsInterval(): number {
+    return this.nestConfigService.get<number>(
+      "PERFORMANCE_METRICS_INTERVAL",
+      60000,
+    ); // 1 Minute
+  }
+
+  // Security
+  get encryptionKey(): string {
+    return this.nestConfigService.get<string>(
+      "ENCRYPTION_KEY",
+      "default-key-change-in-production",
+    );
+  }
+
+  get sessionSecret(): string {
+    return this.nestConfigService.get<string>(
+      "SESSION_SECRET",
+      "default-secret-change-in-production",
+    );
+  }
+
+  get enableApiAuth(): boolean {
+    return this.nestConfigService.get<boolean>("ENABLE_API_AUTH", false);
+  }
+
+  // Trading Limits
+  get maxDailyTrades(): number {
+    return this.nestConfigService.get<number>("MAX_DAILY_TRADES", 100);
+  }
+
+  get maxTradeAmount(): number {
+    return this.nestConfigService.get<number>("MAX_TRADE_AMOUNT", 100000); // $100k
+  }
+
+  get minTradeAmount(): number {
+    return this.nestConfigService.get<number>("MIN_TRADE_AMOUNT", 100); // $100
+  }
+
+  get enablePaperTrading(): boolean {
+    return this.nestConfigService.get<boolean>("ENABLE_PAPER_TRADING", true);
+  }
+
+  // Risk Management
+  get maxPortfolioRisk(): number {
+    return this.nestConfigService.get<number>("MAX_PORTFOLIO_RISK", 20); // 20%
+  }
+
+  get maxPositionSize(): number {
+    return this.nestConfigService.get<number>("MAX_POSITION_SIZE", 10); // 10% des Portfolios
+  }
+
+  get stopLossPercentage(): number {
+    return this.nestConfigService.get<number>("STOP_LOSS_PERCENTAGE", 5); // 5% Stop Loss
+  }
+
+  get takeProfitPercentage(): number {
+    return this.nestConfigService.get<number>("TAKE_PROFIT_PERCENTAGE", 15); // 15% Take Profit
+  }
+
+  // Data Quality
+  get minDataQualityScore(): number {
+    return this.nestConfigService.get<number>("MIN_DATA_QUALITY_SCORE", 80); // 80%
+  }
+
+  get maxDataAge(): number {
+    return this.nestConfigService.get<number>("MAX_DATA_AGE", 86400); // 24 Stunden in Sekunden
+  }
+
+  // Notification Settings
+  get enableEmailNotifications(): boolean {
+    return this.nestConfigService.get<boolean>(
+      "ENABLE_EMAIL_NOTIFICATIONS",
+      false,
+    );
+  }
+
+  get notificationEmail(): string {
+    return this.nestConfigService.get<string>("NOTIFICATION_EMAIL", "");
+  }
+
+  get criticalAlertThreshold(): number {
+    return this.nestConfigService.get<number>("CRITICAL_ALERT_THRESHOLD", 95); // 95%
+  }
+
+  // Backup Settings
+  get enableAutoBackup(): boolean {
+    return this.nestConfigService.get<boolean>("ENABLE_AUTO_BACKUP", true);
+  }
+
+  get backupInterval(): string {
+    return this.nestConfigService.get<string>("BACKUP_INTERVAL", "0 3 * * *"); // Täglich um 3 Uhr
+  }
+
+  get backupRetentionDays(): number {
+    return this.nestConfigService.get<number>("BACKUP_RETENTION_DAYS", 30);
+  }
+
+  get backupPath(): string {
+    return this.nestConfigService.get<string>("BACKUP_PATH", "./backups");
+  }
+
+  // Feature Flags
+  get enableMLPredictions(): boolean {
+    return this.nestConfigService.get<boolean>("ENABLE_ML_PREDICTIONS", true);
+  }
+
+  get enableAdvancedAnalytics(): boolean {
+    return this.nestConfigService.get<boolean>(
+      "ENABLE_ADVANCED_ANALYTICS",
+      true,
+    );
+  }
+
+  get enableRealTimeData(): boolean {
+    return this.nestConfigService.get<boolean>("ENABLE_REAL_TIME_DATA", false);
+  }
+
+  get enableSentimentAnalysis(): boolean {
+    return this.nestConfigService.get<boolean>(
+      "ENABLE_SENTIMENT_ANALYSIS",
+      false,
+    );
+  }
+
+  // Development Settings
+  get isDevelopment(): boolean {
+    return (
+      this.nestConfigService.get<string>("NODE_ENV", "development") ===
+      "development"
+    );
+  }
+
+  get isProduction(): boolean {
+    return (
+      this.nestConfigService.get<string>("NODE_ENV", "development") ===
+      "production"
+    );
+  }
+
+  get enableDebugMode(): boolean {
+    return this.nestConfigService.get<boolean>(
+      "ENABLE_DEBUG_MODE",
+      this.isDevelopment,
+    );
+  }
+
+  get mockDataInDev(): boolean {
+    return this.nestConfigService.get<boolean>("MOCK_DATA_IN_DEV", true);
   }
 }

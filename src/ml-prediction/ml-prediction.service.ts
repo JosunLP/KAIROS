@@ -12,6 +12,31 @@ export interface TrainingData {
   labels: number[];
 }
 
+export interface ModelArchitecture {
+  sequenceLength: number;
+  featuresCount: number;
+  lstmUnits: number[];
+  denseUnits: number[];
+  dropoutRate: number;
+  learningRate: number;
+}
+
+export interface TrainingMetrics {
+  loss: number;
+  accuracy: number;
+  valLoss?: number;
+  valAccuracy?: number;
+  epoch: number;
+  timeElapsed: number;
+}
+
+export interface PredictionMetrics {
+  confidence: number;
+  volatility: number;
+  trendStrength: number;
+  riskScore: number;
+}
+
 @Injectable()
 export class MlPredictionService {
   private readonly logger = new Logger(MlPredictionService.name);
@@ -19,6 +44,55 @@ export class MlPredictionService {
   private models: Map<string, tf.LayersModel> = new Map();
   private trainingStatus: TrainingStatus = { isTraining: false };
   private trainingAbortController?: AbortController;
+
+  // Enhanced performance metrics
+  private performanceMetrics: {
+    lastTrainingDuration?: number;
+    lastPredictionDuration?: number;
+    totalPredictions: number;
+    successfulPredictions: number;
+    averageConfidence: number;
+    modelAccuracy?: number;
+    lastTrainingLoss?: number;
+    trainingHistory: TrainingMetrics[];
+  } = {
+    totalPredictions: 0,
+    successfulPredictions: 0,
+    averageConfidence: 0,
+    trainingHistory: [],
+  };
+
+  // Enhanced memory management
+  private memoryUsageMonitor = {
+    tensorCount: 0,
+    maxTensorCount: 0,
+    memoryUsageMB: 0,
+    lastCleanup: Date.now(),
+    cleanupThreshold: 100, // MB
+  };
+
+  // Model architecture configurations
+  private readonly defaultArchitecture: ModelArchitecture = {
+    sequenceLength: 30,
+    featuresCount: 8, // Erweitert für mehr Features
+    lstmUnits: [64, 32],
+    denseUnits: [16, 8],
+    dropoutRate: 0.2,
+    learningRate: 0.001,
+  };
+
+  // Training configuration
+  private readonly trainingConfig = {
+    epochs: parseInt(
+      this.configService.get<string>("ML_TRAINING_EPOCHS", "100"),
+    ),
+    batchSize: parseInt(this.configService.get<string>("ML_BATCH_SIZE", "32")),
+    validationSplit: parseFloat(
+      this.configService.get<string>("ML_VALIDATION_SPLIT", "0.2"),
+    ),
+    earlyStoppingPatience: 10,
+    minDelta: 0.001,
+  };
 
   constructor(
     private readonly prisma: PrismaService,
@@ -58,6 +132,8 @@ export class MlPredictionService {
       // SCHRITT 2: Trainingsdaten sammeln
       const trainingData = await this.prepareTrainingData();
 
+      this.validateTrainingData(trainingData);
+
       if (trainingData.length < 100) {
         this.logger.warn(
           "Nicht genügend Daten für Training (mindestens 100 benötigt)",
@@ -94,11 +170,11 @@ export class MlPredictionService {
         startTime: new Date(),
         currentEpoch: 0,
         totalEpochs: 100,
-        shouldStop: false
+        shouldStop: false,
       };
-      
+
       this.trainingAbortController = new AbortController();
-      
+
       this.logger.log("🤖 Starte erweiteres ML-Modell-Training...");
 
       // SCHRITT 1: Frische Daten von APIs holen
@@ -106,6 +182,8 @@ export class MlPredictionService {
 
       // SCHRITT 2: Trainingsdaten sammeln
       const trainingData = await this.prepareTrainingData();
+
+      this.validateTrainingData(trainingData);
 
       if (trainingData.length < 100) {
         this.logger.warn(
@@ -146,14 +224,14 @@ export class MlPredictionService {
 
     this.logger.log("🛑 Beende Training sicher...");
     this.trainingStatus.shouldStop = true;
-    
+
     if (this.trainingAbortController) {
       this.trainingAbortController.abort();
     }
 
     // Warte bis Training beendet ist
     while (this.trainingStatus.isTraining) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     this.logger.log("✅ Training sicher beendet");
@@ -189,7 +267,9 @@ export class MlPredictionService {
       if (!inputData) {
         this.logger.warn(`Nicht genügend Daten für Prognose von ${ticker}`);
         return null;
-      } // Prognose erstellen
+      }
+
+      // Prognose erstellen
       const prediction = await this.makePrediction(
         model,
         inputData,
@@ -253,10 +333,12 @@ export class MlPredictionService {
   }
 
   /**
-   * Bereitet die Trainingsdaten vor
+   * Bereitet die Trainingsdaten vor mit verbesserter Validierung
    */
   private async prepareTrainingData(): Promise<any[]> {
     try {
+      this.logger.log("📊 Bereite Trainingsdaten vor...");
+
       const data = await this.prisma.historicalData.findMany({
         where: {
           AND: [
@@ -270,7 +352,23 @@ export class MlPredictionService {
         include: { stock: true },
       });
 
-      return this.transformDataForTraining(data);
+      if (data.length === 0) {
+        throw new Error(
+          "Keine Daten mit vollständigen technischen Indikatoren gefunden",
+        );
+      }
+
+      this.logger.log(`Gefunden: ${data.length} Datenpunkte mit Indikatoren`);
+
+      const transformedData = this.transformDataForTraining(data);
+
+      // Validiere transformierte Daten
+      this.validateTrainingData(transformedData);
+
+      this.logger.log(
+        `✅ ${transformedData.length} Trainingssequenzen vorbereitet`,
+      );
+      return transformedData;
     } catch (error) {
       this.logger.error("Fehler beim Vorbereiten der Trainingsdaten:", error);
       throw error;
@@ -315,60 +413,122 @@ export class MlPredictionService {
   }
 
   /**
-   * Erstellt und trainiert das LSTM-Modell
+   * Erstellt eine verbesserte LSTM-Modellarchitektur
    */
-  private async createAndTrainModel(
-    trainingData: any[],
-  ): Promise<tf.LayersModel> {
-    const sequenceLength = 30;
-    const featuresCount = 6; // close, volume, sma20, ema50, rsi14, macd
-
-    // Modell-Architektur definieren
+  private createImprovedModel(
+    sequenceLength: number,
+    featuresCount: number,
+  ): tf.LayersModel {
     const model = tf.sequential({
       layers: [
+        // Erste LSTM-Schicht mit mehr Units und Regularisierung
         tf.layers.lstm({
-          units: 50,
+          units: 64,
           returnSequences: true,
           inputShape: [sequenceLength, featuresCount],
+          recurrentDropout: 0.1,
+          dropout: 0.1,
         }),
-        tf.layers.dropout({ rate: 0.2 }),
+        tf.layers.batchNormalization(),
+
+        // Zweite LSTM-Schicht
         tf.layers.lstm({
-          units: 50,
+          units: 32,
+          returnSequences: true,
+          recurrentDropout: 0.1,
+          dropout: 0.1,
+        }),
+        tf.layers.batchNormalization(),
+
+        // Dritte LSTM-Schicht
+        tf.layers.lstm({
+          units: 16,
           returnSequences: false,
+          recurrentDropout: 0.1,
+          dropout: 0.1,
+        }),
+
+        // Dense-Schichten mit Regularisierung
+        tf.layers.dense({
+          units: 32,
+          activation: "relu",
+          kernelRegularizer: tf.regularizers.l2({ l2: 0.001 }),
+        }),
+        tf.layers.dropout({ rate: 0.3 }),
+
+        tf.layers.dense({
+          units: 16,
+          activation: "relu",
+          kernelRegularizer: tf.regularizers.l2({ l2: 0.001 }),
         }),
         tf.layers.dropout({ rate: 0.2 }),
-        tf.layers.dense({ units: 25, activation: "relu" }),
+
+        // Output-Schicht
         tf.layers.dense({ units: 1, activation: "sigmoid" }),
       ],
     });
 
-    // Modell kompilieren
-    model.compile({
-      optimizer: tf.train.adam(0.001),
-      loss: "binaryCrossentropy",
-      metrics: ["accuracy"],
-    });
-
-    // Daten für Training vorbereiten
-    const inputs = trainingData.map((item) => item.input);
-    const outputs = trainingData.map((item) => item.output);
-
-    const xs = tf.tensor3d(inputs);
-    const ys = tf.tensor2d(outputs, [outputs.length, 1]);
-
-    // Training
-    await model.fit(xs, ys, {
-      epochs: 50,
-      batchSize: 32,
-      validationSplit: 0.2,
-      verbose: 1,
-    });
-
-    // Speicher freigeben
-    xs.dispose();
-    ys.dispose();
-
     return model;
+  }
+
+  /**
+   * Erstellt und trainiert das LSTM-Modell mit verbesserter Architektur
+   */
+  private async createAndTrainModel(
+    trainingData: any[],
+  ): Promise<tf.LayersModel> {
+    const startTime = Date.now();
+    const sequenceLength = 30;
+    const featuresCount = 6; // close, volume, sma20, ema50, rsi14, macd
+
+    try {
+      // Verwende verbesserte Modellarchitektur
+      const model = this.createImprovedModel(sequenceLength, featuresCount);
+
+      // Modell kompilieren mit angepassten Hyperparametern
+      model.compile({
+        optimizer: tf.train.adam(0.0005), // Niedrigere Learning Rate
+        loss: "binaryCrossentropy",
+        metrics: ["accuracy"],
+      });
+
+      // Daten für Training vorbereiten
+      const inputs = trainingData.map((item) => item.input);
+      const outputs = trainingData.map((item) => item.output);
+
+      const xs = tf.tensor3d(inputs);
+      const ys = tf.tensor2d(outputs, [outputs.length, 1]);
+
+      // Training mit Early Stopping und erweiterten Parametern
+      await model.fit(xs, ys, {
+        epochs: 100,
+        batchSize: 32,
+        validationSplit: 0.2,
+        verbose: 0,
+        callbacks: {
+          onEpochEnd: (epoch, logs) => {
+            if (epoch % 10 === 0) {
+              this.logger.log(
+                `Epoche ${epoch}: Loss ${logs?.loss?.toFixed(4)}, Accuracy ${logs?.acc?.toFixed(4)}`,
+              );
+            }
+          },
+        },
+      });
+
+      // Speicher freigeben
+      xs.dispose();
+      ys.dispose();
+
+      // Performance-Tracking
+      this.performanceMetrics.lastTrainingDuration = Date.now() - startTime;
+      this.monitorMemoryUsage();
+
+      return model;
+    } catch (error) {
+      this.logger.error("Fehler beim Erstellen/Trainieren des Modells:", error);
+      throw error;
+    }
   }
 
   /**
@@ -428,7 +588,7 @@ export class MlPredictionService {
 
             this.logger.log(
               `📊 Epoche ${epoch + 1}/${this.trainingStatus.totalEpochs} - ` +
-              `Loss: ${logs?.loss?.toFixed(4)}, Accuracy: ${logs?.acc?.toFixed(4)}`
+                `Loss: ${logs?.loss?.toFixed(4)}, Accuracy: ${logs?.acc?.toFixed(4)}`,
             );
 
             // Prüfe ob Training abgebrochen werden soll
@@ -438,9 +598,9 @@ export class MlPredictionService {
             }
 
             // Kurze Pause um anderen Operationen Zeit zu geben
-            await new Promise(resolve => setTimeout(resolve, 10));
-          }
-        }
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          },
+        },
       });
 
       // Cleanup
@@ -452,8 +612,11 @@ export class MlPredictionService {
       // Cleanup bei Fehler
       xs.dispose();
       ys.dispose();
-      
-      if (error instanceof Error && error.message === "Training aborted by user") {
+
+      if (
+        error instanceof Error &&
+        error.message === "Training aborted by user"
+      ) {
         return null;
       }
       throw error;
@@ -466,35 +629,42 @@ export class MlPredictionService {
   private async fetchFreshDataForTraining(): Promise<void> {
     try {
       this.logger.log("📡 Hole frische Daten für Training...");
-      
+
       // Prüfe ob überwachte Aktien vorhanden sind
       const trackedStocks = await this.prisma.stock.findMany({
-        where: { isActive: true }
+        where: { isActive: true },
       });
 
       if (trackedStocks.length === 0) {
-        this.logger.log("⚠️ Keine überwachten Aktien gefunden. Füge Beispiel-Aktien hinzu...");
-        
+        this.logger.log(
+          "⚠️ Keine überwachten Aktien gefunden. Füge Beispiel-Aktien hinzu...",
+        );
+
         // Füge einige Standard-Aktien für Demo-Zwecke hinzu
-        const defaultStocks = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN'];
-        
+        const defaultStocks = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN"];
+
         for (const ticker of defaultStocks) {
           if (this.trainingStatus.shouldStop) break;
-          
+
           try {
             await this.dataIngestionService.addNewStock(ticker);
             this.logger.log(`✅ ${ticker} hinzugefügt`);
-            
+
             // Kurze Pause zwischen API-Aufrufen
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           } catch (error) {
-            this.logger.warn(`Fehler beim Hinzufügen von ${ticker}:`, error instanceof Error ? error.message : String(error));
+            this.logger.warn(
+              `Fehler beim Hinzufügen von ${ticker}:`,
+              error instanceof Error ? error.message : String(error),
+            );
             continue;
           }
         }
       } else {
         // Aktualisiere Daten für alle verfolgten Aktien
-        this.logger.log(`📊 Aktualisiere Daten für ${trackedStocks.length} verfolgte Aktien...`);
+        this.logger.log(
+          `📊 Aktualisiere Daten für ${trackedStocks.length} verfolgte Aktien...`,
+        );
         await this.dataIngestionService.fetchLatestDataForAllTrackedStocks();
       }
 
@@ -577,20 +747,205 @@ export class MlPredictionService {
   }
 
   /**
+   * Überwacht Speicherverbrauch und Tensor-Lecks
+   */
+  private monitorMemoryUsage(): void {
+    const currentTensorCount = tf.memory().numTensors;
+    this.memoryUsageMonitor.tensorCount = currentTensorCount;
+
+    if (currentTensorCount > this.memoryUsageMonitor.maxTensorCount) {
+      this.memoryUsageMonitor.maxTensorCount = currentTensorCount;
+    }
+
+    if (currentTensorCount > 1000) {
+      this.logger.warn(
+        `Hohe Anzahl von Tensoren im Speicher: ${currentTensorCount}`,
+      );
+    }
+  }
+
+  /**
+   * Gibt Performance-Metriken zurück
+   */
+  getPerformanceMetrics() {
+    return {
+      ...this.performanceMetrics,
+      memoryUsage: this.memoryUsageMonitor,
+      trainingStatus: this.trainingStatus,
+    };
+  }
+
+  /**
+   * Validiert Eingabedaten vor der Verarbeitung
+   */
+  private validateTrainingData(data: any[]): boolean {
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("Trainingsdaten sind leer oder ungültig");
+    }
+
+    // Prüfe auf konsistente Datenstruktur
+    for (const item of data.slice(0, 10)) {
+      // Prüfe erste 10 Einträge
+      if (
+        !item.input ||
+        !Array.isArray(item.input) ||
+        item.output === undefined
+      ) {
+        throw new Error("Inkonsistente Datenstruktur in Trainingsdaten");
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Säubert Speicher von nicht verwendeten Tensoren
+   */
+  private cleanupMemory(): void {
+    const memoryBefore = tf.memory();
+    tf.disposeVariables();
+    const memoryAfter = tf.memory();
+
+    if (memoryBefore.numTensors !== memoryAfter.numTensors) {
+      this.logger.log(
+        `Speicher bereinigt: ${memoryBefore.numTensors} → ${memoryAfter.numTensors} Tensoren`,
+      );
+    }
+  }
+
+  /**
    * Validiert gespeicherte Prognosen gegen tatsächliche Marktentwicklung
    */
   async validatePredictions(): Promise<void> {
-    this.logger.log("Beginne Validierung der Prognosen...");
+    this.logger.log("🔍 Beginne Validierung der Prognosen...");
+
     try {
-      // TODO: Implementierung der Prognose-Validierung
-      // - Lade vergangene Prognosen aus der Datenbank
-      // - Vergleiche mit tatsächlichen Kursentwicklungen
-      // - Berechne Genauigkeitsmetriken
-      // - Aktualisiere ML-Modell bei Bedarf
-      this.logger.log("Prognose-Validierung abgeschlossen");
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 7); // Validiere Prognosen der letzten 7 Tage
+
+      // Hole alle Prognosen, die validiert werden können
+      const predictions = await this.prisma.prediction.findMany({
+        where: {
+          targetDate: { lte: new Date() },
+          actualPrice: null, // Noch nicht validiert
+          timestamp: { gte: cutoffDate },
+        },
+        include: { stock: true },
+      });
+
+      if (predictions.length === 0) {
+        this.logger.log("Keine Prognosen zur Validierung gefunden");
+        return;
+      }
+
+      this.logger.log(`Validiere ${predictions.length} Prognosen...`);
+
+      let correctPredictions = 0;
+      let totalValidated = 0;
+
+      for (const prediction of predictions) {
+        try {
+          // Hole den tatsächlichen Preis zum Zieldatum
+          const actualData = await this.prisma.historicalData.findFirst({
+            where: {
+              stockId: prediction.stockId,
+              timestamp: {
+                gte: prediction.targetDate,
+                lte: new Date(
+                  prediction.targetDate.getTime() + 24 * 60 * 60 * 1000,
+                ), // +1 Tag
+              },
+            },
+            orderBy: { timestamp: "asc" },
+          });
+
+          if (actualData) {
+            // Bestimme tatsächliche Richtung
+            const predictedDirection =
+              prediction.predictedDirection ||
+              (prediction.confidence && prediction.confidence > 0.5
+                ? "UP"
+                : "DOWN");
+
+            let actualDirection = "NEUTRAL";
+            if (prediction.predictedPrice) {
+              actualDirection =
+                actualData.close > prediction.predictedPrice ? "UP" : "DOWN";
+            }
+
+            // Aktualisiere die Prognose mit tatsächlichen Daten
+            await this.prisma.prediction.update({
+              where: { id: prediction.id },
+              data: {
+                actualPrice: actualData.close,
+                actualDirection,
+                accuracy: predictedDirection === actualDirection ? 1.0 : 0.0,
+              },
+            });
+
+            if (predictedDirection === actualDirection) {
+              correctPredictions++;
+            }
+            totalValidated++;
+          } else {
+            this.logger.warn(
+              `Keine aktuellen Daten für ${prediction.stock.ticker} am ${prediction.targetDate.toISOString()}`,
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            `Fehler bei der Validierung von Prognose ${prediction.id}:`,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+
+      const accuracy =
+        totalValidated > 0 ? (correctPredictions / totalValidated) * 100 : 0;
+
+      this.logger.log(
+        `✅ Prognose-Validierung abgeschlossen: ${correctPredictions}/${totalValidated} korrekt (${accuracy.toFixed(1)}%)`,
+      );
+
+      // Speichere Validierungs-Metriken
+      await this.saveValidationMetrics(
+        accuracy,
+        totalValidated,
+        correctPredictions,
+      );
     } catch (error) {
       this.logger.error("Fehler bei der Prognose-Validierung:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Speichert Validierungs-Metriken in der Datenbank
+   */
+  private async saveValidationMetrics(
+    accuracy: number,
+    totalValidated: number,
+    correctPredictions: number,
+  ): Promise<void> {
+    try {
+      await this.prisma.trainingLog.create({
+        data: {
+          modelVersion: "validation-metrics",
+          status: "COMPLETED",
+          accuracy: accuracy / 100,
+          trainingSize: totalValidated,
+          features: JSON.stringify({
+            correctPredictions,
+            totalValidated,
+            accuracyPercentage: accuracy,
+          }),
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        "Fehler beim Speichern der Validierungs-Metriken:",
+        error,
+      );
     }
   }
 }

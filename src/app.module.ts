@@ -9,6 +9,7 @@ import { AnalysisEngineModule } from "./analysis-engine/analysis-engine.module";
 import { MlPredictionModule } from "./ml-prediction/ml-prediction.module";
 import { SchedulingModule } from "./scheduling/scheduling.module";
 import { CliModule } from "./cli/cli.module";
+import { PortfolioModule } from "./portfolio/portfolio.module";
 
 @Module({
   imports: [
@@ -19,14 +20,13 @@ import { CliModule } from "./cli/cli.module";
     }),
 
     // Scheduling aktivieren
-    ScheduleModule.forRoot(),
-
-    // Eigene Module
+    ScheduleModule.forRoot(), // Eigene Module
     PersistenceModule,
     DataIngestionModule,
     AnalysisEngineModule,
     MlPredictionModule,
     SchedulingModule,
+    PortfolioModule,
     CliModule,
   ],
 })

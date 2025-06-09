@@ -13,7 +13,7 @@ async function main() {
     });
 
     const logger = new Logger("KAIROS");
-    
+
     // CLI-Service abrufen
     const cliService = app.get(SimpleCliService);
 
@@ -28,7 +28,9 @@ async function main() {
 
     // Persistente CLI starten
     logger.log("🚀 KAIROS Stock Analysis CLI gestartet (Persistenter Modus)");
-    logger.log("💡 Verwenden Sie 'help' für verfügbare Befehle oder 'exit' zum Beenden");
+    logger.log(
+      "💡 Verwenden Sie 'help' für verfügbare Befehle oder 'exit' zum Beenden",
+    );
 
     // Readline Interface für interaktive CLI
     const rl = readline.createInterface({
@@ -46,7 +48,7 @@ async function main() {
     // Kommando-Handler
     rl.on("line", async (input) => {
       const command = input.trim();
-      
+
       if (command === "exit" || command === "quit") {
         console.log("👋 KAIROS wird beendet...");
         await cliService.stopPersistentMode();
@@ -62,7 +64,8 @@ async function main() {
         try {
           await cliService.processCommand(args);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+          const errorMessage =
+            error instanceof Error ? error.message : "Unbekannter Fehler";
           console.error("❌ Fehler beim Ausführen des Befehls:", errorMessage);
         }
         rl.prompt();
@@ -76,7 +79,6 @@ async function main() {
       await app.close();
       process.exit(0);
     });
-
   } catch (error) {
     console.error("❌ Fehler beim Starten der Anwendung:", error);
     process.exit(1);
