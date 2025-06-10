@@ -61,6 +61,65 @@ export class ConfigService {
     return this.nestConfigService.get<string>("TRAINING_INTERVAL", "0 2 * * *"); // Täglich um 2 Uhr
   }
 
+  // Scheduling - Erweiterte Cron Job Konfiguration
+  get dataIngestionCron(): string {
+    return this.nestConfigService.get<string>("DATA_INGESTION_CRON", "*/15 * * * *");
+  }
+
+  get technicalAnalysisCron(): string {
+    return this.nestConfigService.get<string>("TECHNICAL_ANALYSIS_CRON", "0 * * * *");
+  }
+
+  get mlTrainingCron(): string {
+    return this.nestConfigService.get<string>("ML_TRAINING_CRON", "0 2 * * *");
+  }
+
+  get predictionValidationCron(): string {
+    return this.nestConfigService.get<string>("PREDICTION_VALIDATION_CRON", "0 3 * * *");
+  }
+
+  get dataCleaupCron(): string {
+    return this.nestConfigService.get<string>("DATA_CLEANUP_CRON", "0 4 * * 0");
+  }
+
+  get dailyPredictionCron(): string {
+    return this.nestConfigService.get<string>("DAILY_PREDICTION_CRON", "0 6 * * *");
+  }
+
+  get dataIntegrityCron(): string {
+    return this.nestConfigService.get<string>("DATA_INTEGRITY_CRON", "0 1 * * *");
+  }
+
+  get schedulingTimezone(): string {
+    return this.nestConfigService.get<string>("SCHEDULING_TIMEZONE", "Europe/Berlin");
+  }
+
+  // Cron Job Monitoring
+  get enableCronMonitoring(): boolean {
+    return this.nestConfigService.get<boolean>("ENABLE_CRON_MONITORING", true);
+  }
+
+  get cronJobTimeout(): number {
+    return this.nestConfigService.get<number>("CRON_JOB_TIMEOUT", 300000); // 5 Minuten
+  }
+
+  get cronJobRetryAttempts(): number {
+    return this.nestConfigService.get<number>("CRON_JOB_RETRY_ATTEMPTS", 3);
+  }
+
+  get cronJobRetryDelay(): number {
+    return this.nestConfigService.get<number>("CRON_JOB_RETRY_DELAY", 30000); // 30 Sekunden
+  }
+
+  // Notification Settings für Cron Jobs
+  get enableCronNotifications(): boolean {
+    return this.nestConfigService.get<boolean>("ENABLE_CRON_NOTIFICATIONS", false);
+  }
+
+  get cronFailureThreshold(): number {
+    return this.nestConfigService.get<number>("CRON_FAILURE_THRESHOLD", 3);
+  }
+
   // API Rate Limits
   get alphaVantageRateLimit(): number {
     return this.nestConfigService.get<number>("ALPHA_VANTAGE_RATE_LIMIT", 5); // Anfragen pro Minute

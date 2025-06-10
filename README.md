@@ -212,3 +212,180 @@ Bei Fragen oder Problemen:
 ---
 
 ## **Happy Trading! 📈**
+
+## ⏰ Automatisierte Cron Jobs
+
+KAIROS führt verschiedene Aufgaben automatisch über Cron Jobs aus. Diese Jobs sorgen für kontinuierliche Datenerfassung, Analyse und ML-Training.
+
+### 📋 Verfügbare Cron Jobs
+
+| Job | Zeitplan | Beschreibung | Timeout |
+|-----|----------|-------------|---------|
+| **Datenerfassung** | `*/15 * * * *` | Holt aktuelle Marktdaten alle 15 Min (nur Handelszeiten) | 5 Min |
+| **Technische Analyse** | `0 * * * *` | Berechnet technische Indikatoren jede Stunde | 10 Min |
+| **ML-Training** | `0 2 * * *` | Trainiert ML-Modelle täglich um 2:00 Uhr | 1 Std |
+| **Vorhersage-Validierung** | `0 3 * * *` | Validiert Vorhersagen täglich um 3:00 Uhr | 30 Min |
+| **Datenbereinigung** | `0 4 * * 0` | Bereinigt alte Daten sonntags um 4:00 Uhr | 30 Min |
+| **Tägliche Vorhersagen** | `0 6 * * *` | Erstellt tägliche Vorhersagen um 6:00 Uhr | 30 Min |
+| **Datenintegrität** | `0 1 * * *` | Überprüft Datenintegrität täglich um 1:00 Uhr | 10 Min |
+
+### 🔧 Cron Job Konfiguration
+
+Alle Cron Jobs können über Umgebungsvariablen konfiguriert werden:
+
+```bash
+# Cron Job Konfiguration kopieren
+cp .env.cron.example .env.cron
+
+# In Ihrer .env Datei hinzufügen:
+# Quelle: .env.cron
+```
+
+**Beispiel-Konfiguration:**
+
+```bash
+# Datenerfassung (alle 30 Minuten)
+DATA_INGESTION_CRON=*/30 * * * *
+
+# ML-Training nur werktags
+ML_TRAINING_CRON=0 2 * * 1-5
+
+# Monitoring aktivieren
+ENABLE_CRON_MONITORING=true
+CRON_FAILURE_THRESHOLD=3
+```
+
+### 📊 Cron Job Management
+
+KAIROS bietet ein Management-Script für Cron Jobs:
+
+```bash
+# Status aller Cron Jobs anzeigen
+node scripts/cron-manager.js status
+
+# Logs für alle Jobs anzeigen
+node scripts/cron-manager.js logs
+
+# Logs für spezifischen Job
+node scripts/cron-manager.js logs ml-training
+
+# Konfiguration testen
+node scripts/cron-manager.js test
+
+# Nächste geplante Ausführungen
+node scripts/cron-manager.js schedule
+
+# Hilfe anzeigen
+node scripts/cron-manager.js help
+```
+
+### 🔍 Monitoring & Alerting
+
+Die Cron Jobs werden automatisch überwacht:
+
+- **✅ Erfolgreiche Ausführungen** werden geloggt
+- **❌ Fehlgeschlagene Jobs** werden mit Details protokolliert
+- **⏰ Timeout-Überwachung** für langläufige Jobs
+- **🚨 Benachrichtigungen** bei wiederholten Fehlern (konfigurierbar)
+- **📊 Metriken** für Performance-Analyse
+
+**Monitoring-Features:**
+
+```typescript
+// Job-Statistiken abrufen
+const stats = cronMonitoring.getJobStatistics();
+
+// Spezifische Job-Metriken
+const metrics = cronMonitoring.getJobMetrics('ml-training');
+
+// Job-Historie
+const history = cronMonitoring.getJobHistory('data-ingestion');
+```
+
+### 🚀 Produktionsempfehlungen
+
+Für den Live-Betrieb empfehlen wir folgende Anpassungen:
+
+**1. Optimierte Zeitpläne:**
+
+```bash
+# Datenerfassung nur während Kernhandelszeiten
+DATA_INGESTION_CRON=*/30 9-17 * * 1-5
+
+# ML-Training nur werktags
+ML_TRAINING_CRON=0 2 * * 1-5
+
+# Gestaffelte Jobs zur Ressourcenoptimierung
+TECHNICAL_ANALYSIS_CRON=5 * * * *
+DAILY_PREDICTION_CRON=10 6 * * *
+```
+
+**2. Monitoring konfigurieren:**
+
+```bash
+ENABLE_CRON_MONITORING=true
+ENABLE_CRON_NOTIFICATIONS=true
+CRON_FAILURE_THRESHOLD=2
+NOTIFICATION_EMAIL=admin@your-domain.com
+```
+
+**3. Erweiterte Timeouts:**
+
+```bash
+# Produktionsumgebung hat mehr Daten
+CRON_JOB_TIMEOUT=600000  # 10 Minuten
+ML_TRAINING_TIMEOUT=7200000  # 2 Stunden
+```
+
+### ⚠️ Troubleshooting
+
+**Häufige Probleme:**
+
+1. **Jobs laufen nicht:**
+   ```bash
+   # Cron Expression validieren
+   node scripts/cron-manager.js validate
+   
+   # NestJS Schedule Module prüfen
+   npm run start:dev
+   ```
+
+2. **Timeout-Fehler:**
+   ```bash
+   # Timeout erhöhen
+   CRON_JOB_TIMEOUT=900000  # 15 Minuten
+   ```
+
+3. **API-Rate-Limits:**
+   ```bash
+   # Datenerfassung reduzieren
+   DATA_INGESTION_CRON=*/30 * * * *
+   ```
+
+4. **Speicherprobleme:**
+   ```bash
+   # Jobs staffeln
+   ML_TRAINING_CRON=0 2 * * *
+   PREDICTION_VALIDATION_CRON=0 4 * * *
+   ```
+
+**Debug-Befehle:**
+
+```bash
+# Live-Logs verfolgen
+tail -f logs/kairos.log
+
+# Job-Status prüfen
+node scripts/cron-manager.js status
+
+# Konfiguration testen
+node scripts/cron-manager.js test
+```
+
+### � Cron Job Sicherheit
+
+- **🔐 Umgebungsvariablen** für alle kritischen Konfigurationen
+- **🚨 Fehler-Alerting** bei kritischen Problemen
+- **📊 Audit-Logs** für alle Job-Ausführungen
+- **⏰ Timeout-Schutz** verhindert hängende Prozesse
+- **🔄 Automatische Wiederholung** bei temporären Fehlern
