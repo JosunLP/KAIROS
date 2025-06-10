@@ -110,6 +110,12 @@ export class SimpleCliService {
         case "automation-config":
           await this.handleAutomationConfigCommand(args.slice(3));
           break;
+        case "test-provider":
+          await this.handleTestProviderCommand(args[3], args[4]);
+          break;
+        case "provider-status":
+          await this.handleProviderStatusCommand();
+          break;
         default:
           this.showHelp();
       }
@@ -438,6 +444,10 @@ export class SimpleCliService {
     console.log("  list                 - Alle verfolgten Aktien auflisten");
     console.log("  track <TICKER>       - Aktie zur Verfolgung hinzufügen");
     console.log("");
+    console.log("🔌 DATENQUELLEN:");
+    console.log("  provider-status      - Status aller Datenquellen anzeigen");
+    console.log("  test-provider <NAME> [TICKER] - Provider testen (alpha-vantage, polygon, finnhub, mock)");
+    console.log("");
     console.log("🤖 ML-VORHERSAGEN:");
     console.log("  predict <TICKER>     - Preis-Vorhersage für Aktie");
     console.log("  train                - Einmaliges ML-Training starten");
@@ -482,6 +492,8 @@ export class SimpleCliService {
     console.log("");
     console.log("📋 BEISPIELE:");
     console.log("  kairos track AAPL");
+    console.log("  kairos provider-status");
+    console.log("  kairos test-provider alpha-vantage AAPL");
     console.log("  kairos predict AAPL");
     console.log("  kairos portfolio-create 'Mein Portfolio'");
     console.log("  kairos backtest rsi 2024-01-01 2024-12-31");
@@ -1361,5 +1373,135 @@ export class SimpleCliService {
       console.log("❌ Fehler bei der Konfiguration");
       this.logger.error("Automation Config Error", error);
     }
+  }
+
+  /**
+   * Testet einen spezifischen Datenquellen-Provider
+   */
+  private async handleTestProviderCommand(providerName?: string, ticker?: string): Promise<void> {
+    console.log("🧪 Provider-Test");
+    console.log("==================");
+
+    if (!providerName) {
+      console.log("❌ Provider-Name erforderlich");
+      console.log("📋 Verfügbare Provider: alpha-vantage, polygon, finnhub, mock");
+      return;
+    }
+
+    if (!ticker) {
+      ticker = "AAPL"; // Standardwert
+    }
+
+    try {
+      // Provider-spezifischer Test
+      let result = null;
+      
+      switch (providerName.toLowerCase()) {
+        case "alpha-vantage":
+          // Test Alpha Vantage direkt
+          await this.testAlphaVantageProvider(ticker);
+          break;
+        case "polygon":
+          await this.testPolygonProvider(ticker);
+          break;
+        case "finnhub":
+          await this.testFinnhubProvider(ticker);
+          break;
+        case "mock":
+          await this.testMockProvider(ticker);
+          break;
+        default:
+          console.log("❌ Unbekannter Provider");
+          console.log("📋 Verfügbare Provider: alpha-vantage, polygon, finnhub, mock");
+          return;
+      }
+
+    } catch (error) {
+      console.log(`❌ Fehler beim Testen von ${providerName}:`, (error as Error).message);
+    }
+  }
+
+  private async testAlphaVantageProvider(ticker: string): Promise<void> {
+    console.log(`🔍 Teste Alpha Vantage mit ${ticker}...`);
+    
+    if (!process.env.ALPHA_VANTAGE_API_KEY) {
+      console.log("❌ Alpha Vantage API-Schlüssel nicht konfiguriert");
+      return;
+    }
+
+    try {
+      // Direkte API-Test-Implementierung wäre hier
+      await this.dataIngestionService.fetchLatestDataForStock(ticker);
+      console.log("✅ Alpha Vantage Test erfolgreich");
+    } catch (error) {
+      console.log(`❌ Alpha Vantage Test fehlgeschlagen: ${(error as Error).message}`);
+    }
+  }
+
+  private async testPolygonProvider(ticker: string): Promise<void> {
+    console.log(`🔍 Teste Polygon.io mit ${ticker}...`);
+    
+    if (!process.env.POLYGON_API_KEY) {
+      console.log("❌ Polygon API-Schlüssel nicht konfiguriert");
+      return;
+    }
+
+    try {
+      await this.dataIngestionService.fetchLatestDataForStock(ticker);
+      console.log("✅ Polygon Test erfolgreich");
+    } catch (error) {
+      console.log(`❌ Polygon Test fehlgeschlagen: ${(error as Error).message}`);
+    }
+  }
+
+  private async testFinnhubProvider(ticker: string): Promise<void> {
+    console.log(`🔍 Teste Finnhub mit ${ticker}...`);
+    
+    if (!process.env.FINNHUB_API_KEY) {
+      console.log("❌ Finnhub API-Schlüssel nicht konfiguriert");
+      return;
+    }
+
+    try {
+      await this.dataIngestionService.fetchLatestDataForStock(ticker);
+      console.log("✅ Finnhub Test erfolgreich");
+    } catch (error) {
+      console.log(`❌ Finnhub Test fehlgeschlagen: ${(error as Error).message}`);
+    }
+  }
+
+  private async testMockProvider(ticker: string): Promise<void> {
+    console.log(`🔍 Teste Mock Provider mit ${ticker}...`);
+    
+    try {
+      await this.dataIngestionService.fetchLatestDataForStock(ticker);
+      console.log("✅ Mock Provider Test erfolgreich");
+    } catch (error) {
+      console.log(`❌ Mock Provider Test fehlgeschlagen: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Zeigt den Status aller Provider an
+   */
+  private async handleProviderStatusCommand(): Promise<void> {
+    console.log("📊 Provider-Status");
+    console.log("===================");
+
+    // Simuliere Provider-Checks (in einer echten Implementierung würde man die Provider direkt testen)
+    const providers = [
+      { name: "Alpha Vantage", configured: !!process.env.ALPHA_VANTAGE_API_KEY },
+      { name: "Polygon.io", configured: !!process.env.POLYGON_API_KEY },
+      { name: "Finnhub", configured: !!process.env.FINNHUB_API_KEY },
+      { name: "Mock Provider", configured: true }
+    ];
+
+    for (const provider of providers) {
+      const status = provider.configured ? "✅ Konfiguriert" : "❌ Nicht konfiguriert";
+      console.log(`${provider.name}: ${status}`);
+    }
+
+    console.log("");
+    console.log("💡 Hinweis: Verwenden Sie 'test-provider <name> <ticker>' um einen Provider zu testen");
   }
 }

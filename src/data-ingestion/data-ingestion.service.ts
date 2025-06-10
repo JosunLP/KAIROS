@@ -128,27 +128,38 @@ export class DataIngestionService {
     try {
       this.logger.log(`📡 Hole Daten für ${ticker}...`);
 
-      // Versuche mit verschiedenen Providern
-      let data = null;
+      let data: MarketDataPoint[] = [];
+      let lastError: Error | null = null;
 
-      try {
-        data = await this.alphaVantage.fetchHistoricalData(ticker);
-      } catch (error) {
-        this.logger.warn(
-          `Alpha Vantage fehlgeschlagen für ${ticker}, versuche Polygon...`,
-        );
+      // Durchlaufe alle Provider in der Reihenfolge ihrer Priorität
+      for (const provider of this.providers) {
+        if (!provider.isConfigured()) {
+          this.logger.debug(`${provider.name} nicht konfiguriert für ${ticker}, überspringe...`);
+          continue;
+        }
 
         try {
-          data = await this.polygon.fetchHistoricalData(ticker);
-        } catch (error2) {
-          this.logger.warn(
-            `Polygon fehlgeschlagen für ${ticker}, versuche Finnhub...`,
-          );
-          data = await this.finnhub.fetchHistoricalData(ticker);
+          this.logger.debug(`Versuche ${provider.name} für ${ticker}...`);
+          data = await provider.fetchHistoricalData(ticker, 30); // Letzten 30 Tage
+          
+          if (data && data.length > 0) {
+            this.logger.log(`✅ ${data.length} Datenpunkte für ${ticker} von ${provider.name} erhalten`);
+            break; // Erfolgreich, stoppe die Schleife
+          } else {
+            this.logger.warn(`${provider.name} hat keine Daten für ${ticker} zurückgegeben`);
+          }
+          
+        } catch (error) {
+          lastError = error as Error;
+          this.logger.warn(`${provider.name} fehlgeschlagen für ${ticker}: ${(error as Error).message}`);
+          continue; // Versuche nächsten Provider
         }
       }
 
       if (!data || data.length === 0) {
+        if (lastError) {
+          this.logger.error(`Alle Provider fehlgeschlagen für ${ticker}. Letzter Fehler:`, lastError);
+        }
         this.logger.warn(`Keine Daten für ${ticker} erhalten`);
         return;
       }

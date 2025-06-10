@@ -50,6 +50,8 @@ export class AlphaVantageProvider implements DataProvider {
     }
 
     try {
+      this.logger.debug(`Starte API-Aufruf für ${ticker} mit ${days} Tagen`);
+      
       const response = await this.httpClient.get("/query", {
         params: {
           function: "TIME_SERIES_DAILY",
@@ -60,6 +62,9 @@ export class AlphaVantageProvider implements DataProvider {
       });
 
       const data = response.data;
+      
+      // Debug: Logge die Struktur der API-Antwort
+      this.logger.debug(`API-Antwort Schlüssel: ${Object.keys(data).join(', ')}`);
 
       if (data["Error Message"]) {
         throw new Error(`Alpha Vantage API-Fehler: ${data["Error Message"]}`);
@@ -69,8 +74,16 @@ export class AlphaVantageProvider implements DataProvider {
         throw new Error(`Alpha Vantage Rate Limit erreicht: ${data["Note"]}`);
       }
 
-      const timeSeries = data["Time Series (Daily)"];
+      // Verschiedene mögliche Schlüssel für Zeitreihendaten prüfen
+      const timeSeries = 
+        data["Time Series (Daily)"] || 
+        data["Daily Time Series"] ||
+        data["time_series_daily"] ||
+        null;
+        
       if (!timeSeries) {
+        // Mehr Details über die API-Antwort loggen
+        this.logger.error(`API-Antwort für ${ticker}:`, JSON.stringify(data, null, 2));
         throw new Error("Keine Zeitreihendaten in der API-Antwort gefunden");
       }
 
