@@ -48,6 +48,25 @@ services:
       timeout: 10s
       retries: 3
 
+  # Initialisierungs-Service
+  kairos-init:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://kairos:kairos_password@postgres:5432/kairos
+    volumes:
+      - ./prisma:/app/prisma
+    command: >
+      sh -c "
+        echo '🔄 Initialisiere Datenbank...' &&
+        npx prisma db push &&
+        npx prisma generate &&
+        echo '✅ Datenbank initialisiert!'
+      "
+    restart: "no"
+
   # Hauptanwendung (Produktion)
   kairos:
     build:
@@ -86,8 +105,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      ml-service:
-        condition: service_healthy
+      kairos-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     # Für CLI-Anwendung: interaktiver Modus
     stdin_open: true

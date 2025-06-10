@@ -80,8 +80,13 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Port exponieren (falls später Web-Interface hinzugefügt wird)
 EXPOSE 3000
 
-# Startbefehl
-CMD ["node", "dist/main.js"]
+# Scripts kopieren und ausführbar machen
+COPY scripts/docker-init.sh /app/scripts/
+RUN chmod +x /app/scripts/docker-init.sh
+
+# Startup-Script als Entrypoint
+ENTRYPOINT ["/app/scripts/docker-init.sh"]
+CMD ["npm", "run", "start:prod"]
 
 # Labels für bessere Wartung
 LABEL org.opencontainers.image.title="KAIROS"
