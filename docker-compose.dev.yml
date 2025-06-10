@@ -1,0 +1,96 @@
+version: '3.8'
+
+# Docker Compose Konfiguration für die Entwicklung
+# Verwendung: docker-compose -f docker-compose.dev.yml up
+
+services:
+  # PostgreSQL für Entwicklung
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: kairos-postgres-dev
+    environment:
+      - POSTGRES_DB=kairos_dev
+      - POSTGRES_USER=kairos_dev
+      - POSTGRES_PASSWORD=kairos_dev_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5433:5432"
+    networks:
+      - kairos_dev_network
+    restart: unless-stopped
+
+  # ML Service für Entwicklung
+  ml-service-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    container_name: kairos-ml-service-dev
+    environment:
+      - ML_SERVICE_PORT=8081
+      - MODEL_STORAGE_PATH=/app/models
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./ml-service:/app
+      - ml_models_dev:/app/models
+    ports:
+      - "8081:8081"
+    networks:
+      - kairos_dev_network
+    restart: unless-stopped
+
+  # Entwicklungsanwendung
+  kairos-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: kairos-app-dev
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://kairos_dev:kairos_dev_password@postgres-dev:5432/kairos_dev
+      - ML_SERVICE_URL=http://ml-service-dev:8081
+      - LOG_LEVEL=debug
+    env_file:
+      - .env.dev
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./package*.json:/app/
+      - ./tsconfig*.json:/app/
+    ports:
+      - "3000:3000"
+    networks:
+      - kairos_dev_network
+    depends_on:
+      - postgres-dev
+      - ml-service-dev
+    command: npm run start:dev
+
+  # Prisma Studio für Entwicklung
+  prisma-studio-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: kairos-prisma-studio-dev
+    environment:
+      - DATABASE_URL=postgresql://kairos_dev:kairos_dev_password@postgres-dev:5432/kairos_dev
+    volumes:
+      - ./prisma:/app/prisma
+    ports:
+      - "5556:5555"
+    networks:
+      - kairos_dev_network
+    depends_on:
+      - postgres-dev
+    command: npx prisma studio --hostname 0.0.0.0
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  ml_models_dev:
+    driver: local
+
+networks:
+  kairos_dev_network:
+    driver: bridge

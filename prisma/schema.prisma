@@ -5,8 +5,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./kairos.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Stock {

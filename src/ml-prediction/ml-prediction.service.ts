@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../persistence/prisma.service";
 import { DataIngestionService } from "../data-ingestion/data-ingestion.service";
+import { MLClientService, TrainingData as MLTrainingData, PredictionRequest } from "./ml-client.service";
 import { PredictionResult, TrainingStatus } from "../common/types";
 import * as tf from "@tensorflow/tfjs";
 import * as fs from "fs";
@@ -113,6 +114,7 @@ export class MlPredictionService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly dataIngestionService: DataIngestionService,
+    private readonly mlClientService: MLClientService,
   ) {
     // Erstelle Model-Verzeichnis falls es nicht existiert
     if (!fs.existsSync(this.modelDir)) {
@@ -968,6 +970,236 @@ export class MlPredictionService {
         "Fehler beim Speichern der Validierungs-Metriken:",
         error,
       );
+    }
+  }
+
+  // ==========================================
+  // ML Service Integration Methods
+  // ==========================================
+
+  /**
+   * Trainiert ein Modell mit dem externen ML-Service
+   */
+  async trainModelWithMLService(
+    ticker: string,
+    modelName?: string,
+  ): Promise<any> {
+    try {
+      this.logger.log(`Training Modell für ${ticker} mit ML-Service...`);
+
+      // Prüfe ob ML-Service verfügbar ist
+      if (!(await this.mlClientService.isServiceAvailable())) {
+        await this.mlClientService.waitForService();
+      }
+
+      // Lade Trainingsdaten
+      const trainingData = await this.prepareTrainingDataForMLService(ticker);
+      
+      const mlTrainingData: MLTrainingData = {
+        features: trainingData.features,
+        target: trainingData.labels,
+        model_name: modelName || `${ticker}_model_${Date.now()}`,
+      };
+
+      // Trainiere Modell
+      const result = await this.mlClientService.trainModel(mlTrainingData);
+      
+      this.logger.log(`Modell für ${ticker} erfolgreich trainiert: ${result.message}`);
+      return result;
+
+    } catch (error) {
+      this.logger.error(`Fehler beim Training mit ML-Service für ${ticker}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Macht Vorhersagen mit dem externen ML-Service
+   */
+  async predictWithMLService(
+    ticker: string,
+    modelName: string,
+    features?: number[],
+  ): Promise<PredictionResult> {
+    try {
+      this.logger.log(`Vorhersage für ${ticker} mit ML-Service...`);
+
+      // Bereite Features vor falls nicht gegeben
+      const predictionFeatures = features || await this.prepareFeaturesForPrediction(ticker);
+
+      const predictionRequest: PredictionRequest = {
+        features: predictionFeatures,
+        model_name: modelName,
+      };
+
+      // Mache Vorhersage
+      const response = await this.mlClientService.predict(predictionRequest);
+      
+      // Konvertiere zu PredictionResult Format
+      const predictionResult: PredictionResult = {
+        symbol: ticker,
+        prediction: response.predictions[0],
+        confidence: 0.8, // Placeholder - könnte vom ML-Service kommen
+        timestamp: new Date(response.timestamp),
+        model: modelName,
+        features: {}, // Leeres Objekt für Features
+      };
+
+      this.logger.log(`Vorhersage für ${ticker} erfolgreich: ${response.predictions[0]}`);
+      return predictionResult;
+
+    } catch (error) {
+      this.logger.error(`Fehler bei Vorhersage mit ML-Service für ${ticker}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Listet verfügbare Modelle vom ML-Service auf
+   */
+  async listAvailableMLModels(): Promise<any> {
+    try {
+      const models = await this.mlClientService.listModels();
+      this.logger.log(`${models.total} Modelle verfügbar im ML-Service`);
+      return models;
+    } catch (error) {
+      this.logger.error('Fehler beim Abrufen der ML-Modelle:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bereitet Trainingsdaten für den ML-Service vor
+   */
+  private async prepareTrainingDataForMLService(ticker: string): Promise<TrainingData> {
+    // Verwende die Prisma-Datenbank direkt
+    const data = await this.prisma.historicalData.findMany({
+      where: {
+        stock: {
+          ticker: ticker,
+        },
+      },
+      orderBy: {
+        timestamp: 'asc',
+      },
+      take: 200,
+    });
+    
+    if (data.length < 50) {
+      throw new Error(`Nicht genügend Daten für ${ticker}: ${data.length} Datenpunkte`);
+    }
+
+    const features: number[][] = [];
+    const labels: number[] = [];
+
+    // Erstelle Features und Labels
+    for (let i = this.defaultArchitecture.sequenceLength; i < data.length; i++) {
+      const sequence = data.slice(i - this.defaultArchitecture.sequenceLength, i);
+      
+      // Features: [close, volume, sma20, ema50, rsi14, macd, bollUpper, bollLower]
+      const featureRow = sequence.map((item: any) => [
+        item.close,
+        Number(item.volume),
+        item.sma20 || item.close,
+        item.ema50 || item.close,
+        item.rsi14 || 50,
+        item.macd || 0,
+        item.bollUpper || item.close,
+        item.bollLower || item.close,
+      ]).flat();
+
+      features.push(featureRow);
+      labels.push(data[i].close); // Nächster Schlusskurs als Ziel
+    }
+
+    return { features, labels };
+  }
+
+  /**
+   * Bereitet Features für eine einzelne Vorhersage vor
+   */
+  private async prepareFeaturesForPrediction(ticker: string): Promise<number[]> {
+    const data = await this.prisma.historicalData.findMany({
+      where: {
+        stock: {
+          ticker: ticker,
+        },
+      },
+      orderBy: {
+        timestamp: 'desc',
+      },
+      take: this.defaultArchitecture.sequenceLength + 10,
+    });
+    
+    if (data.length < this.defaultArchitecture.sequenceLength) {
+      throw new Error(`Nicht genügend Daten für Vorhersage: ${data.length} Datenpunkte`);
+    }
+
+    // Nimm die letzten N Datenpunkte
+    const sequence = data.slice(-this.defaultArchitecture.sequenceLength);
+    
+    // Erstelle Feature-Array
+    const features = sequence.map((item: any) => [
+      item.close,
+      Number(item.volume),
+      item.sma20 || item.close,
+      item.ema50 || item.close,
+      item.rsi14 || 50,
+      item.macd || 0,
+      item.bollUpper || item.close,
+      item.bollLower || item.close,
+    ]).flat();
+
+    return features;
+  }
+
+  /**
+   * Überprüft den Status des ML-Services
+   */
+  async checkMLServiceStatus(): Promise<any> {
+    try {
+      const status = await this.mlClientService.healthCheck();
+      this.logger.log('ML-Service ist verfügbar');
+      return status;
+    } catch (error: any) {
+      this.logger.warn('ML-Service nicht verfügbar:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Hybrid-Training: Verwendet sowohl lokales TensorFlow als auch ML-Service
+   */
+  async hybridTraining(ticker: string): Promise<{
+    localResult: any;
+    mlServiceResult: any;
+  }> {
+    try {
+      this.logger.log(`Hybrid-Training für ${ticker} gestartet...`);
+
+      // Lokales Training (bestehende Methode ohne Parameter)
+      const localPromise = this.trainModel();
+
+      // ML-Service Training
+      const mlServicePromise = this.trainModelWithMLService(ticker);
+
+      // Beide parallel ausführen
+      const [localResult, mlServiceResult] = await Promise.allSettled([
+        localPromise,
+        mlServicePromise,
+      ]);
+
+      const result = {
+        localResult: localResult.status === 'fulfilled' ? localResult.value : null,
+        mlServiceResult: mlServiceResult.status === 'fulfilled' ? mlServiceResult.value : null,
+      };
+
+      this.logger.log(`Hybrid-Training für ${ticker} abgeschlossen`);
+      return result;
+
+    } catch (error) {
+      this.logger.error(`Fehler beim Hybrid-Training für ${ticker}:`, error);
+      throw error;
     }
   }
 }

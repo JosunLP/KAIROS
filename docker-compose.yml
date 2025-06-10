@@ -1,6 +1,54 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Datenbank Container
+  postgres:
+    image: postgres:15-alpine
+    container_name: kairos-postgres
+    environment:
+      - POSTGRES_DB=kairos
+      - POSTGRES_USER=kairos
+      - POSTGRES_PASSWORD=kairos_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - kairos_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kairos -d kairos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ML Models Service Container
+  ml-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    container_name: kairos-ml-service
+    environment:
+      - ML_SERVICE_PORT=8080
+      - MODEL_STORAGE_PATH=/app/models
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ml_models:/app/models
+      - ml_logs:/app/logs
+    ports:
+      - "8080:8080"
+    networks:
+      - kairos_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Hauptanwendung (Produktion)
   kairos:
     build:
       context: .
@@ -9,7 +57,8 @@ services:
     container_name: kairos-app
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:/app/data/kairos.db
+      - DATABASE_URL=postgresql://kairos:kairos_password@postgres:5432/kairos
+      - ML_SERVICE_URL=http://ml-service:8080
       - LOG_LEVEL=info
       - ENABLE_FILE_LOGGING=true
       - LOG_FILE_PATH=/app/logs/kairos.log
@@ -30,14 +79,15 @@ services:
     env_file:
       - .env
     volumes:
-      # Persistente Datenbank
-      - kairos_data:/app/data
-      # Persistente ML-Modelle
-      - kairos_models:/app/models
       # Log-Dateien
-      - kairos_logs:/app/logs
+      - app_logs:/app/logs
     networks:
       - kairos_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
     restart: unless-stopped
     # Für CLI-Anwendung: interaktiver Modus
     stdin_open: true
@@ -52,7 +102,8 @@ services:
     container_name: kairos-dev
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=file:/app/data/kairos.db
+      - DATABASE_URL=postgresql://kairos:kairos_password@postgres:5432/kairos
+      - ML_SERVICE_URL=http://ml-service:8080
       - LOG_LEVEL=debug
       # Entwicklungs-Cron Konfiguration (häufigere Ausführung)
       - SCHEDULING_TIMEZONE=Europe/Berlin
@@ -73,12 +124,15 @@ services:
       - ./src:/app/src
       - ./prisma:/app/prisma
       - ./package*.json:/app/
-      # Persistente Daten
-      - kairos_data_dev:/app/data
-      - kairos_models_dev:/app/models
-      - kairos_logs_dev:/app/logs
+      # Log-Dateien
+      - app_logs_dev:/app/logs
     networks:
       - kairos_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
     command: npm run start:dev
     stdin_open: true
     tty: true
@@ -93,35 +147,55 @@ services:
       target: build
     container_name: kairos-prisma-studio
     environment:
-      - DATABASE_URL=file:/app/data/kairos.db
+      - DATABASE_URL=postgresql://kairos:kairos_password@postgres:5432/kairos
     env_file:
       - .env
     volumes:
-      - kairos_data_dev:/app/data
       - ./prisma:/app/prisma
     ports:
       - "5555:5555"
     networks:
       - kairos_network
+    depends_on:
+      postgres:
+        condition: service_healthy
     command: npx prisma studio --hostname 0.0.0.0
     profiles:
       - dev
 
+  # Redis für Caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: kairos-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - kairos_network
+    restart: unless-stopped
+    profiles:
+      - cache
+
 volumes:
-  # Produktions-Volumes
-  kairos_data:
+  # Datenbank-Volume
+  postgres_data:
     driver: local
-  kairos_models:
+  
+  # ML-Models Volume
+  ml_models:
     driver: local
-  kairos_logs:
+  
+  # Log-Volumes
+  app_logs:
+    driver: local
+  app_logs_dev:
+    driver: local
+  ml_logs:
     driver: local
     
-  # Entwicklungs-Volumes
-  kairos_data_dev:
-    driver: local
-  kairos_models_dev:
-    driver: local
-  kairos_logs_dev:
+  # Redis-Volume
+  redis_data:
     driver: local
 
 networks:
