@@ -63,11 +63,17 @@ export class ConfigService {
 
   // Scheduling - Erweiterte Cron Job Konfiguration
   get dataIngestionCron(): string {
-    return this.nestConfigService.get<string>("DATA_INGESTION_CRON", "*/15 * * * *");
+    return this.nestConfigService.get<string>(
+      "DATA_INGESTION_CRON",
+      "*/15 * * * *",
+    );
   }
 
   get technicalAnalysisCron(): string {
-    return this.nestConfigService.get<string>("TECHNICAL_ANALYSIS_CRON", "0 * * * *");
+    return this.nestConfigService.get<string>(
+      "TECHNICAL_ANALYSIS_CRON",
+      "0 * * * *",
+    );
   }
 
   get mlTrainingCron(): string {
@@ -75,7 +81,10 @@ export class ConfigService {
   }
 
   get predictionValidationCron(): string {
-    return this.nestConfigService.get<string>("PREDICTION_VALIDATION_CRON", "0 3 * * *");
+    return this.nestConfigService.get<string>(
+      "PREDICTION_VALIDATION_CRON",
+      "0 3 * * *",
+    );
   }
 
   get dataCleaupCron(): string {
@@ -83,15 +92,24 @@ export class ConfigService {
   }
 
   get dailyPredictionCron(): string {
-    return this.nestConfigService.get<string>("DAILY_PREDICTION_CRON", "0 6 * * *");
+    return this.nestConfigService.get<string>(
+      "DAILY_PREDICTION_CRON",
+      "0 6 * * *",
+    );
   }
 
   get dataIntegrityCron(): string {
-    return this.nestConfigService.get<string>("DATA_INTEGRITY_CRON", "0 1 * * *");
+    return this.nestConfigService.get<string>(
+      "DATA_INTEGRITY_CRON",
+      "0 1 * * *",
+    );
   }
 
   get schedulingTimezone(): string {
-    return this.nestConfigService.get<string>("SCHEDULING_TIMEZONE", "Europe/Berlin");
+    return this.nestConfigService.get<string>(
+      "SCHEDULING_TIMEZONE",
+      "Europe/Berlin",
+    );
   }
 
   // Cron Job Monitoring
@@ -113,7 +131,10 @@ export class ConfigService {
 
   // Notification Settings für Cron Jobs
   get enableCronNotifications(): boolean {
-    return this.nestConfigService.get<boolean>("ENABLE_CRON_NOTIFICATIONS", false);
+    return this.nestConfigService.get<boolean>(
+      "ENABLE_CRON_NOTIFICATIONS",
+      false,
+    );
   }
 
   get cronFailureThreshold(): number {

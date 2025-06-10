@@ -9,11 +9,11 @@ import { ConfigModule } from "../config/config.module";
 
 @Module({
   imports: [
-    DataIngestionModule, 
-    AnalysisEngineModule, 
+    DataIngestionModule,
+    AnalysisEngineModule,
     MlPredictionModule,
     CommonModule,
-    ConfigModule
+    ConfigModule,
   ],
   providers: [TasksService, CronMonitoringService],
   exports: [TasksService, CronMonitoringService],

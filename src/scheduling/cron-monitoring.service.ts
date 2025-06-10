@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { NotificationService } from '../common/notification.service';
-import { ConfigService } from '../config/config.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { NotificationService } from "../common/notification.service";
+import { ConfigService } from "../config/config.service";
 
 export interface CronJobMetrics {
   jobName: string;
   startTime: Date;
   endTime?: Date;
   duration?: number;
-  status: 'running' | 'success' | 'failed';
+  status: "running" | "success" | "failed";
   error?: string;
   consecutiveFailures: number;
   lastRunTime?: Date;
@@ -36,7 +36,7 @@ export class CronMonitoringService {
     const metrics: CronJobMetrics = {
       jobName,
       startTime: new Date(),
-      status: 'running',
+      status: "running",
       consecutiveFailures: this.getConsecutiveFailures(jobName),
     };
 
@@ -60,7 +60,7 @@ export class CronMonitoringService {
 
     metrics.endTime = new Date();
     metrics.duration = metrics.endTime.getTime() - metrics.startTime.getTime();
-    metrics.status = 'success';
+    metrics.status = "success";
     metrics.consecutiveFailures = 0;
     metrics.lastRunTime = new Date();
 
@@ -95,7 +95,7 @@ export class CronMonitoringService {
 
     metrics.endTime = new Date();
     metrics.duration = metrics.endTime.getTime() - metrics.startTime.getTime();
-    metrics.status = 'failed';
+    metrics.status = "failed";
     metrics.error = error instanceof Error ? error.message : error;
     metrics.consecutiveFailures = this.getConsecutiveFailures(jobName) + 1;
 
@@ -113,24 +113,27 @@ export class CronMonitoringService {
   /**
    * Behandelt Job-Fehler und sendet Benachrichtigungen
    */
-  private async handleJobFailure(jobName: string, metrics: CronJobMetrics): Promise<void> {
+  private async handleJobFailure(
+    jobName: string,
+    metrics: CronJobMetrics,
+  ): Promise<void> {
     const threshold = this.configService.cronFailureThreshold;
-    
+
     if (metrics.consecutiveFailures >= threshold) {
       const message = `🚨 KRITISCH: Cron Job "${jobName}" ist ${metrics.consecutiveFailures} mal hintereinander fehlgeschlagen.\n\nLetzter Fehler: ${metrics.error}\nZeit: ${metrics.endTime}`;
-      
+
       if (this.configService.enableCronNotifications) {
         try {
           await this.notificationService.sendAlert(
-            'Kritischer Cron Job Fehler',
+            "Kritischer Cron Job Fehler",
             message,
-            'high'
+            "high",
           );
         } catch (error) {
-          this.logger.error('Fehler beim Senden der Benachrichtigung:', error);
+          this.logger.error("Fehler beim Senden der Benachrichtigung:", error);
         }
       }
-      
+
       this.logger.error(`🚨 KRITISCH: ${message}`);
     }
   }
@@ -141,15 +144,15 @@ export class CronMonitoringService {
   private getConsecutiveFailures(jobName: string): number {
     const history = this.jobHistory.get(jobName) || [];
     let failures = 0;
-    
+
     for (let i = history.length - 1; i >= 0; i--) {
-      if (history[i].status === 'failed') {
+      if (history[i].status === "failed") {
         failures++;
       } else {
         break;
       }
     }
-    
+
     return failures;
   }
 
@@ -159,12 +162,12 @@ export class CronMonitoringService {
   private saveJobHistory(jobName: string, metrics: CronJobMetrics): void {
     const history = this.jobHistory.get(jobName) || [];
     history.push(metrics);
-    
+
     // Begrenzt die Historie auf die letzten 100 Einträge
     if (history.length > 100) {
       history.shift();
     }
-    
+
     this.jobHistory.set(jobName, history);
   }
 
@@ -191,7 +194,7 @@ export class CronMonitoringService {
 
   /**
    * Ruft Statistiken für alle Jobs ab
-   */  getJobStatistics(): any {
+   */ getJobStatistics(): any {
     const stats = {
       totalJobs: this.jobHistory.size,
       runningJobs: this.jobMetrics.size,
@@ -200,8 +203,13 @@ export class CronMonitoringService {
 
     for (const [jobName, history] of this.jobHistory.entries()) {
       const recentRuns = history.slice(-10);
-      const successRate = recentRuns.filter(r => r.status === 'success').length / recentRuns.length * 100;
-      const avgDuration = recentRuns.reduce((sum, r) => sum + (r.duration || 0), 0) / recentRuns.length;
+      const successRate =
+        (recentRuns.filter((r) => r.status === "success").length /
+          recentRuns.length) *
+        100;
+      const avgDuration =
+        recentRuns.reduce((sum, r) => sum + (r.duration || 0), 0) /
+        recentRuns.length;
       const lastRun = history[history.length - 1];
 
       stats.jobSummary[jobName] = {
@@ -226,10 +234,10 @@ export class CronMonitoringService {
 
     for (const [jobName, metrics] of this.jobMetrics.entries()) {
       const runtime = now.getTime() - metrics.startTime.getTime();
-      
+
       if (runtime > timeout) {
         this.logger.warn(
-          `⚠️  Job ${jobName} läuft bereits ${Math.round(runtime / 1000)}s (Timeout: ${Math.round(timeout / 1000)}s)`
+          `⚠️  Job ${jobName} läuft bereits ${Math.round(runtime / 1000)}s (Timeout: ${Math.round(timeout / 1000)}s)`,
         );
       }
     }

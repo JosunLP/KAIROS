@@ -23,12 +23,12 @@ export class TasksService {
   /**
    * Holt aktuelle Marktdaten alle 15 Minuten (während Handelszeiten)
    */
-  @Cron('*/15 * * * *', {
+  @Cron("*/15 * * * *", {
     name: "fetchLatestData",
     timeZone: "Europe/Berlin",
   })
   async handleDataIngestion() {
-    const jobName = 'data-ingestion';
+    const jobName = "data-ingestion";
     this.cronMonitoring.startJob(jobName);
 
     try {
@@ -36,13 +36,16 @@ export class TasksService {
         this.logger.debug(
           "Außerhalb der Handelszeiten - Datenerfassung übersprungen",
         );
-        this.cronMonitoring.completeJob(jobName, { skipped: true, reason: 'outside-market-hours' });
+        this.cronMonitoring.completeJob(jobName, {
+          skipped: true,
+          reason: "outside-market-hours",
+        });
         return;
       }
 
       this.logger.log("Starte geplante Datenerfassung");
       await this.dataIngestion.fetchLatestDataForAllTrackedStocks();
-      
+
       this.cronMonitoring.completeJob(jobName, { processed: true });
       this.logger.log("Geplante Datenerfassung abgeschlossen");
     } catch (error) {
@@ -59,13 +62,13 @@ export class TasksService {
     timeZone: "Europe/Berlin",
   })
   async handleTechnicalAnalysis() {
-    const jobName = 'technical-analysis';
+    const jobName = "technical-analysis";
     this.cronMonitoring.startJob(jobName);
 
     try {
       this.logger.log("Starte geplante technische Analyse");
       await this.analysisEngine.enrichLatestData();
-      
+
       this.cronMonitoring.completeJob(jobName, { processed: true });
       this.logger.log("Geplante technische Analyse abgeschlossen");
     } catch (error) {
@@ -82,13 +85,13 @@ export class TasksService {
     timeZone: "Europe/Berlin",
   })
   async handleModelTraining() {
-    const jobName = 'ml-training';
+    const jobName = "ml-training";
     this.cronMonitoring.startJob(jobName);
 
     try {
       this.logger.log("Starte geplantes ML-Training");
       await this.mlPrediction.trainModel();
-      
+
       this.cronMonitoring.completeJob(jobName, { trained: true });
       this.logger.log("Geplantes ML-Training abgeschlossen");
     } catch (error) {
@@ -105,13 +108,13 @@ export class TasksService {
     timeZone: "Europe/Berlin",
   })
   async handlePredictionValidation() {
-    const jobName = 'prediction-validation';
+    const jobName = "prediction-validation";
     this.cronMonitoring.startJob(jobName);
 
     try {
       this.logger.log("Starte geplante Vorhersage-Validierung");
       await this.mlPrediction.validatePredictions();
-      
+
       this.cronMonitoring.completeJob(jobName, { validated: true });
       this.logger.log("Geplante Vorhersage-Validierung abgeschlossen");
     } catch (error) {
@@ -128,7 +131,7 @@ export class TasksService {
     timeZone: "Europe/Berlin",
   })
   async handleDataCleanup() {
-    const jobName = 'data-cleanup';
+    const jobName = "data-cleanup";
     this.cronMonitoring.startJob(jobName);
 
     try {
@@ -137,7 +140,10 @@ export class TasksService {
       const retentionDays = 365; // Standardwert, kann später über ConfigService konfiguriert werden
       await this.prisma.cleanupOldData(retentionDays);
 
-      this.cronMonitoring.completeJob(jobName, { retentionDays, cleaned: true });
+      this.cronMonitoring.completeJob(jobName, {
+        retentionDays,
+        cleaned: true,
+      });
       this.logger.log("Geplante Datenbereinigung abgeschlossen");
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
@@ -153,7 +159,7 @@ export class TasksService {
     timeZone: "Europe/Berlin",
   })
   async handleDailyPredictions() {
-    const jobName = 'daily-predictions';
+    const jobName = "daily-predictions";
     this.cronMonitoring.startJob(jobName);
 
     try {
@@ -173,8 +179,13 @@ export class TasksService {
         }
       }
 
-      this.cronMonitoring.completeJob(jobName, { processedStocks: processedCount, totalStocks: activeStocks.length });
-      this.logger.log(`Tägliche Vorhersage-Generierung abgeschlossen (${processedCount}/${activeStocks.length} erfolgreich)`);
+      this.cronMonitoring.completeJob(jobName, {
+        processedStocks: processedCount,
+        totalStocks: activeStocks.length,
+      });
+      this.logger.log(
+        `Tägliche Vorhersage-Generierung abgeschlossen (${processedCount}/${activeStocks.length} erfolgreich)`,
+      );
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
       this.logger.error("Fehler bei täglicher Vorhersage-Generierung", error);
@@ -189,7 +200,7 @@ export class TasksService {
     timeZone: "Europe/Berlin",
   })
   async handleDatabaseIntegrityCheck() {
-    const jobName = 'data-integrity';
+    const jobName = "data-integrity";
     this.cronMonitoring.startJob(jobName);
 
     try {
@@ -201,7 +212,10 @@ export class TasksService {
         this.cronMonitoring.completeJob(jobName, { healthy: true });
         this.logger.log("Datenbank-Integritätsprüfung erfolgreich");
       } else {
-        this.cronMonitoring.completeJob(jobName, { healthy: false, warning: true });
+        this.cronMonitoring.completeJob(jobName, {
+          healthy: false,
+          warning: true,
+        });
         this.logger.warn("Datenbank-Integritätsprobleme erkannt");
       }
     } catch (error) {

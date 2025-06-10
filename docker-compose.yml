@@ -13,6 +13,20 @@ services:
       - LOG_LEVEL=info
       - ENABLE_FILE_LOGGING=true
       - LOG_FILE_PATH=/app/logs/kairos.log
+      # Cron Job Konfiguration für Produktion
+      - SCHEDULING_TIMEZONE=Europe/Berlin
+      - ENABLE_CRON_MONITORING=true
+      - CRON_JOB_TIMEOUT=900000
+      - ENABLE_CRON_NOTIFICATIONS=true
+      - CRON_FAILURE_THRESHOLD=2
+      # Produktions-optimierte Cron Zeitpläne
+      - DATA_INGESTION_CRON=*/30 9-17 * * 1-5
+      - TECHNICAL_ANALYSIS_CRON=5 * * * *
+      - ML_TRAINING_CRON=0 2 * * 1-5
+      - PREDICTION_VALIDATION_CRON=0 4 * * 1-5
+      - DATA_CLEANUP_CRON=0 3 * * 6
+      - DAILY_PREDICTION_CRON=30 6 * * 1-5
+      - DATA_INTEGRITY_CRON=0 1 * * *
     env_file:
       - .env
     volumes:
@@ -40,6 +54,18 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=file:/app/data/kairos.db
       - LOG_LEVEL=debug
+      # Entwicklungs-Cron Konfiguration (häufigere Ausführung)
+      - SCHEDULING_TIMEZONE=Europe/Berlin
+      - ENABLE_CRON_MONITORING=true
+      - CRON_JOB_TIMEOUT=300000
+      - ENABLE_CRON_NOTIFICATIONS=false
+      - DATA_INGESTION_CRON=*/15 * * * *
+      - TECHNICAL_ANALYSIS_CRON=0 * * * *
+      - ML_TRAINING_CRON=0 2 * * *
+      - PREDICTION_VALIDATION_CRON=0 3 * * *
+      - DATA_CLEANUP_CRON=0 4 * * 0
+      - DAILY_PREDICTION_CRON=0 6 * * *
+      - DATA_INTEGRITY_CRON=0 1 * * *
     env_file:
       - .env
     volumes:

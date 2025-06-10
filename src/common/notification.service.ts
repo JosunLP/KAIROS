@@ -316,13 +316,18 @@ export class NotificationService {
   async sendAlert(
     title: string,
     message: string,
-    priority: 'low' | 'medium' | 'high' | 'critical' = 'medium',
-    component: string = 'SYSTEM'
+    priority: "low" | "medium" | "high" | "critical" = "medium",
+    component: string = "SYSTEM",
   ): Promise<string> {
-    const type = priority === 'critical' ? 'CRITICAL' : 
-                 priority === 'high' ? 'ERROR' :
-                 priority === 'medium' ? 'WARNING' : 'INFO';
-    
+    const type =
+      priority === "critical"
+        ? "CRITICAL"
+        : priority === "high"
+          ? "ERROR"
+          : priority === "medium"
+            ? "WARNING"
+            : "INFO";
+
     return this.notify(type, title, message, component, { priority });
   }
 

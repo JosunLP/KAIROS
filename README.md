@@ -38,8 +38,12 @@ npm run setup
 ### 2. Konfiguration
 
 ```bash
+# Einfache Konfiguration mit Setup-Script
+npm run setup-env
+
+# ODER manuell:
 # Umgebungsvariablen konfigurieren
-cp .env.example .env
+cp .env.template .env
 # Bearbeiten Sie .env und tragen Sie Ihre API-Schlüssel ein
 ```
 
@@ -342,6 +346,7 @@ ML_TRAINING_TIMEOUT=7200000  # 2 Stunden
 **Häufige Probleme:**
 
 1. **Jobs laufen nicht:**
+
    ```bash
    # Cron Expression validieren
    node scripts/cron-manager.js validate
@@ -351,18 +356,21 @@ ML_TRAINING_TIMEOUT=7200000  # 2 Stunden
    ```
 
 2. **Timeout-Fehler:**
+
    ```bash
    # Timeout erhöhen
    CRON_JOB_TIMEOUT=900000  # 15 Minuten
    ```
 
 3. **API-Rate-Limits:**
+
    ```bash
    # Datenerfassung reduzieren
    DATA_INGESTION_CRON=*/30 * * * *
    ```
 
 4. **Speicherprobleme:**
+
    ```bash
    # Jobs staffeln
    ML_TRAINING_CRON=0 2 * * *
