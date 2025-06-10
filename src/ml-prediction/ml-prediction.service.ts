@@ -49,14 +49,14 @@ export class MlPredictionService {
   private readonly logger = new Logger(MlPredictionService.name);
   private readonly modelDir = path.join(process.cwd(), "models");
   private models: Map<string, tf.LayersModel> = new Map();
-  private trainingStatus: ExtendedTrainingStatus = { 
+  private trainingStatus: ExtendedTrainingStatus = {
     isTraining: false,
     progress: 0,
     epoch: 0,
     loss: 0,
     accuracy: 0,
     estimatedTimeRemaining: 0,
-    status: "IDLE"
+    status: "IDLE",
   };
   private trainingAbortController?: AbortController;
 

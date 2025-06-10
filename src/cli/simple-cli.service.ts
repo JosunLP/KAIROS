@@ -6,6 +6,7 @@ import { PrismaService } from "../persistence/prisma.service";
 import { PortfolioService } from "../portfolio/portfolio.service";
 import { BacktestService } from "../portfolio/backtest.service";
 import { RiskManagementService } from "../portfolio/risk-management.service";
+import { AutomationService } from "../automation/automation.service";
 import { TrainingStatus } from "../common/types";
 
 // Erweiterte TrainingStatus Interface für erweiterte CLI Funktionen
@@ -31,6 +32,7 @@ export class SimpleCliService {
     private readonly portfolioService: PortfolioService,
     private readonly backtestService: BacktestService,
     private readonly riskManagementService: RiskManagementService,
+    private readonly automationService: AutomationService,
   ) {}
 
   async processCommand(args: string[]): Promise<void> {
@@ -95,6 +97,18 @@ export class SimpleCliService {
           break;
         case "dashboard":
           await this.handleDashboardCommand();
+          break;
+        case "automation-start":
+          await this.handleAutomationStartCommand();
+          break;
+        case "automation-stop":
+          await this.handleAutomationStopCommand();
+          break;
+        case "automation-status":
+          await this.handleAutomationStatusCommand();
+          break;
+        case "automation-config":
+          await this.handleAutomationConfigCommand(args.slice(3));
           break;
         default:
           this.showHelp();
@@ -454,6 +468,14 @@ export class SimpleCliService {
     );
     console.log("  risk-analysis <PORTFOLIO_ID>              - Risiko-Analyse");
     console.log("");
+    console.log("🤖 VOLLAUTOMATIK:");
+    console.log("  automation-start     - Vollautomatik starten");
+    console.log("  automation-stop      - Vollautomatik stoppen");
+    console.log("  automation-status    - Automation-Status anzeigen");
+    console.log(
+      "  automation-config [KEY VALUE] - Konfiguration anzeigen/ändern",
+    );
+    console.log("");
     console.log("🔧 SYSTEM:");
     console.log("  persistent-start     - Kontinuierlichen Modus starten");
     console.log("  persistent-stop      - Kontinuierlichen Modus beenden");
@@ -463,6 +485,8 @@ export class SimpleCliService {
     console.log("  kairos predict AAPL");
     console.log("  kairos portfolio-create 'Mein Portfolio'");
     console.log("  kairos backtest rsi 2024-01-01 2024-12-31");
+    console.log("  kairos automation-start");
+    console.log("  kairos automation-config data-interval 10");
     console.log("");
     console.log("💡 Verfügbare Strategien: rsi, sma, macd");
 
@@ -936,12 +960,16 @@ export class SimpleCliService {
       console.log(
         `   Portfolio-Risiko: ${((riskMetrics.portfolioRisk || 0) * 100).toFixed(2)}%`,
       );
-      console.log(`   VaR (1 Tag, 95%): $${(riskMetrics.varDaily || 0).toFixed(2)}`);
+      console.log(
+        `   VaR (1 Tag, 95%): $${(riskMetrics.varDaily || 0).toFixed(2)}`,
+      );
       console.log(
         `   VaR (1 Woche, 95%): $${(riskMetrics.varWeekly || 0).toFixed(2)}`,
       );
       console.log(`   Sharpe Ratio: ${riskMetrics.sharpeRatio.toFixed(2)}`);
-      console.log(`   Sortino Ratio: ${(riskMetrics.sortinoRatio || 0).toFixed(2)}`);
+      console.log(
+        `   Sortino Ratio: ${(riskMetrics.sortinoRatio || 0).toFixed(2)}`,
+      );
       console.log(
         `   Max Drawdown: ${(riskMetrics.maxDrawdown * 100).toFixed(2)}%`,
       );
@@ -1074,6 +1102,264 @@ export class SimpleCliService {
     } catch (error) {
       console.log("❌ Fehler beim Laden des Dashboards");
       this.logger.error("Fehler beim Dashboard", error);
+    }
+  }
+
+  /**
+   * Startet den Vollautomatik-Modus
+   */
+  private async handleAutomationStartCommand(): Promise<void> {
+    console.log("🤖 Starte Vollautomatik-Modus...");
+
+    try {
+      if (this.automationService.isAutomationRunning()) {
+        console.log("⚠️  Vollautomatik läuft bereits!");
+        return;
+      }
+
+      await this.automationService.startAutomation();
+      console.log("✅ Vollautomatik-Modus erfolgreich gestartet!");
+      console.log("");
+      console.log("📋 Aktive Prozesse:");
+      console.log("   • 🔄 Datenerfassung (alle 5 Min)");
+      console.log("   • 📊 Technische Analyse (alle 15 Min)");
+      console.log("   • 🔮 ML-Vorhersagen (alle 30 Min)");
+      console.log("   • 💼 Portfolio-Management (alle 60 Min)");
+      console.log("   • ⚠️  Risikomanagement (alle 10 Min)");
+      console.log("   • 💓 System-Überwachung (alle 2 Min)");
+      console.log("");
+      console.log("💡 Verwenden Sie 'automation-status' für Status-Updates");
+      console.log("💡 Verwenden Sie 'automation-stop' zum Beenden");
+    } catch (error) {
+      console.log("❌ Fehler beim Starten der Vollautomatik");
+      this.logger.error("Automation Start Error", error);
+    }
+  }
+
+  /**
+   * Stoppt den Vollautomatik-Modus
+   */
+  private async handleAutomationStopCommand(): Promise<void> {
+    console.log("🛑 Stoppe Vollautomatik-Modus...");
+
+    try {
+      if (!this.automationService.isAutomationRunning()) {
+        console.log("⚠️  Vollautomatik läuft derzeit nicht!");
+        return;
+      }
+
+      await this.automationService.stopAutomation();
+      console.log("✅ Vollautomatik-Modus erfolgreich gestoppt!");
+    } catch (error) {
+      console.log("❌ Fehler beim Stoppen der Vollautomatik");
+      this.logger.error("Automation Stop Error", error);
+    }
+  }
+
+  /**
+   * Zeigt den Status der Vollautomatik
+   */
+  private async handleAutomationStatusCommand(): Promise<void> {
+    console.log("🤖 Vollautomatik-Status");
+    console.log("=======================");
+
+    try {
+      const status = await this.automationService.getDetailedStatus();
+      const automationStatus = status.automation;
+      const isRunning = this.automationService.isAutomationRunning();
+
+      // Grundstatus
+      console.log(`📊 Status: ${isRunning ? "🟢 LÄUFT" : "🔴 GESTOPPT"}`);
+
+      if (automationStatus.startTime) {
+        const uptime = Date.now() - automationStatus.startTime.getTime();
+        const uptimeHours = Math.floor(uptime / (1000 * 60 * 60));
+        const uptimeMinutes = Math.floor(
+          (uptime % (1000 * 60 * 60)) / (1000 * 60),
+        );
+        console.log(`⏱️  Laufzeit: ${uptimeHours}h ${uptimeMinutes}m`);
+      }
+
+      console.log(
+        `🔄 Zyklen: ${automationStatus.successfulCycles} erfolgreich, ${automationStatus.failedCycles} fehlgeschlagen`,
+      );
+
+      if (automationStatus.lastActivity) {
+        console.log(
+          `📅 Letzte Aktivität: ${automationStatus.lastActivity.toLocaleString()}`,
+        );
+      }
+
+      console.log("");
+      console.log("📋 Komponenten-Status:");
+
+      // Komponenten-Status
+      Object.entries(automationStatus.components).forEach(
+        ([component, info]: [string, any]) => {
+          const statusIcon =
+            info.status === "active"
+              ? "🟡"
+              : info.status === "error"
+                ? "🔴"
+                : "🟢";
+          const lastRun = info.lastRun
+            ? info.lastRun.toLocaleTimeString()
+            : "Nie";
+          console.log(
+            `   ${statusIcon} ${component}: ${info.status.toUpperCase()} (Letzte Ausführung: ${lastRun})`,
+          );
+          if (info.errors > 0) {
+            console.log(`      ⚠️  ${info.errors} Fehler`);
+          }
+        },
+      );
+
+      console.log("");
+      console.log("📈 Performance:");
+      console.log(
+        `   💾 RAM: ${automationStatus.performance.memoryUsageMB} MB`,
+      );
+      console.log(
+        `   ⏱️  Letzter Zyklus: ${automationStatus.performance.lastCycleTimeMs} ms`,
+      );
+
+      // Konfiguration
+      const config = this.automationService.getConfig();
+      console.log("");
+      console.log("⚙️  Konfiguration:");
+      console.log(
+        `   🔄 Datenerfassung: alle ${Math.round(config.dataIngestionIntervalMs / 60000)} Min`,
+      );
+      console.log(
+        `   📊 Analyse: alle ${Math.round(config.analysisIntervalMs / 60000)} Min`,
+      );
+      console.log(
+        `   🔮 Vorhersagen: alle ${Math.round(config.predictionIntervalMs / 60000)} Min`,
+      );
+      console.log(
+        `   💼 Portfolio: alle ${Math.round(config.portfolioRebalanceIntervalMs / 60000)} Min`,
+      );
+      console.log(
+        `   ⚠️  Risiko: alle ${Math.round(config.riskCheckIntervalMs / 60000)} Min`,
+      );
+
+      // Fehler (nur die letzten 5)
+      if (automationStatus.errors.length > 0) {
+        console.log("");
+        console.log("❌ Letzte Fehler:");
+        automationStatus.errors.slice(-5).forEach((errorMsg: string) => {
+          console.log(`   🔸 ${errorMsg}`);
+        });
+      }
+    } catch (error) {
+      console.log("❌ Fehler beim Abrufen des Status");
+      this.logger.error("Automation Status Error", error);
+    }
+  }
+
+  /**
+   * Konfiguriert die Vollautomatik
+   */
+  private async handleAutomationConfigCommand(args: string[]): Promise<void> {
+    console.log("⚙️  Vollautomatik-Konfiguration");
+    console.log("===============================");
+
+    try {
+      if (args.length === 0) {
+        // Zeige aktuelle Konfiguration
+        const config = this.automationService.getConfig();
+        console.log("📋 Aktuelle Konfiguration:");
+        console.log("");
+        console.log("🔄 Intervalle (in Minuten):");
+        console.log(
+          `   Datenerfassung: ${Math.round(config.dataIngestionIntervalMs / 60000)}`,
+        );
+        console.log(
+          `   Technische Analyse: ${Math.round(config.analysisIntervalMs / 60000)}`,
+        );
+        console.log(
+          `   ML-Vorhersagen: ${Math.round(config.predictionIntervalMs / 60000)}`,
+        );
+        console.log(
+          `   Portfolio-Management: ${Math.round(config.portfolioRebalanceIntervalMs / 60000)}`,
+        );
+        console.log(
+          `   Risikomanagement: ${Math.round(config.riskCheckIntervalMs / 60000)}`,
+        );
+        console.log(
+          `   Gesundheitschecks: ${Math.round(config.healthCheckIntervalMs / 60000)}`,
+        );
+        console.log("");
+        console.log("⚠️  Fehlerbehandlung:");
+        console.log(`   Max. Wiederholungen: ${config.maxRetries}`);
+        console.log(
+          `   Wiederholungsverzögerung: ${Math.round(config.retryDelayMs / 1000)}s`,
+        );
+        console.log(
+          `   Stopp bei kritischen Fehlern: ${config.stopOnCriticalError ? "Ja" : "Nein"}`,
+        );
+        console.log("");
+        console.log("🔔 Benachrichtigungen:");
+        console.log(
+          `   Aktiviert: ${config.notifications.enabled ? "Ja" : "Nein"}`,
+        );
+        console.log(
+          `   Fehlerschwelle: ${config.notifications.errorThreshold}`,
+        );
+        return;
+      }
+
+      // Parameter setzen
+      const [key, value] = args;
+      const numValue = parseInt(value);
+
+      if (isNaN(numValue)) {
+        console.log("❌ Ungültiger Wert - Zahlen erforderlich");
+        return;
+      }
+
+      const updates: any = {};
+
+      switch (key) {
+        case "data-interval":
+          updates.dataIngestionIntervalMs = numValue * 60 * 1000;
+          break;
+        case "analysis-interval":
+          updates.analysisIntervalMs = numValue * 60 * 1000;
+          break;
+        case "prediction-interval":
+          updates.predictionIntervalMs = numValue * 60 * 1000;
+          break;
+        case "portfolio-interval":
+          updates.portfolioRebalanceIntervalMs = numValue * 60 * 1000;
+          break;
+        case "risk-interval":
+          updates.riskCheckIntervalMs = numValue * 60 * 1000;
+          break;
+        case "health-interval":
+          updates.healthCheckIntervalMs = numValue * 60 * 1000;
+          break;
+        case "max-retries":
+          updates.maxRetries = numValue;
+          break;
+        default:
+          console.log("❌ Unbekannter Parameter");
+          console.log("📋 Verfügbare Parameter:");
+          console.log(
+            "   data-interval, analysis-interval, prediction-interval",
+          );
+          console.log("   portfolio-interval, risk-interval, health-interval");
+          console.log("   max-retries");
+          return;
+      }
+
+      this.automationService.updateConfig(updates);
+      console.log(
+        `✅ ${key} auf ${numValue}${key.includes("interval") ? " Minuten" : ""} gesetzt`,
+      );
+    } catch (error) {
+      console.log("❌ Fehler bei der Konfiguration");
+      this.logger.error("Automation Config Error", error);
     }
   }
 }

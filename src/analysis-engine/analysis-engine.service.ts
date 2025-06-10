@@ -133,7 +133,8 @@ export class AnalysisEngineService {
         if (indicators.adx && indicators.adx[indicatorIndex] !== undefined) {
           // ADX liefert ein Objekt zurück, wir speichern nur den ADX-Wert
           const adxValue = indicators.adx[indicatorIndex];
-          updateData.adx = typeof adxValue === 'object' ? adxValue.adx : adxValue;
+          updateData.adx =
+            typeof adxValue === "object" ? adxValue.adx : adxValue;
         }
         if (indicators.cci && indicators.cci[indicatorIndex] !== undefined) {
           updateData.cci = indicators.cci[indicatorIndex];
@@ -812,7 +813,8 @@ export class AnalysisEngineService {
         if (adxIndex < indicators.adx.length) {
           // ADX liefert ein Objekt zurück, wir speichern nur den ADX-Wert
           const adxValue = indicators.adx[adxIndex];
-          updateData.adx = typeof adxValue === 'object' ? adxValue.adx : adxValue;
+          updateData.adx =
+            typeof adxValue === "object" ? adxValue.adx : adxValue;
         }
       }
 

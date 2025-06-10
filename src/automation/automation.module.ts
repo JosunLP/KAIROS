@@ -1,24 +1,24 @@
 import { Module } from "@nestjs/common";
-import { SimpleCliService } from "./simple-cli.service";
 import { DataIngestionModule } from "../data-ingestion/data-ingestion.module";
 import { AnalysisEngineModule } from "../analysis-engine/analysis-engine.module";
 import { MlPredictionModule } from "../ml-prediction/ml-prediction.module";
-import { SchedulingModule } from "../scheduling/scheduling.module";
-import { PersistenceModule } from "../persistence/persistence.module";
 import { PortfolioModule } from "../portfolio/portfolio.module";
-import { AutomationModule } from "../automation/automation.module";
+import { PersistenceModule } from "../persistence/persistence.module";
+import { SchedulingModule } from "../scheduling/scheduling.module";
+import { CommonModule } from "../common/common.module";
+import { AutomationService } from "./automation.service";
 
 @Module({
   imports: [
+    CommonModule,
     DataIngestionModule,
     AnalysisEngineModule,
     MlPredictionModule,
-    SchedulingModule,
-    PersistenceModule,
     PortfolioModule,
-    AutomationModule,
+    PersistenceModule,
+    SchedulingModule,
   ],
-  providers: [SimpleCliService],
-  exports: [SimpleCliService],
+  providers: [AutomationService],
+  exports: [AutomationService],
 })
-export class CliModule {}
+export class AutomationModule {}
