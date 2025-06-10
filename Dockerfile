@@ -1,95 +1,86 @@
-# Multi-stage build für optimale Container-Größe
-FROM node:18-alpine3.20 AS base
+# KAIROS Dockerfile
+FROM node:18-alpine AS build
 
-# Arbeitsverzeichnis setzen
-WORKDIR /app
-
-# System-Abhängigkeiten für native Module installieren
-RUN apk add --no-cache python3 make g++
-
-# Package.json und package-lock.json kopieren
-COPY package*.json ./
-COPY prisma ./prisma/
-
-# Abhängigkeiten installieren
-RUN npm ci --only=production && npm cache clean --force
-
-# === Build-Stage ===
-FROM node:18-alpine3.20 AS build
+# Install system dependencies
+RUN apk add --no-cache python3 make g++ bash curl
 
 WORKDIR /app
 
-# System-Abhängigkeiten
-RUN apk add --no-cache python3 make g++
-
-# Alle Dateien kopieren
+# Copy package files and install dependencies
 COPY package*.json ./
-COPY tsconfig*.json ./
-COPY nest-cli.json ./
-COPY src ./src/
 COPY prisma ./prisma/
-
-# Alle Abhängigkeiten installieren (inkl. dev)
 RUN npm ci
 
-# Prisma Client generieren
-RUN npx prisma generate
+# Copy source and build
+COPY . .
+RUN npm run build && npx prisma generate
 
-# TypeScript kompilieren
-RUN npm run build
+# Production stage  
+FROM node:18-alpine AS production
 
-# === Production-Stage ===
-FROM node:18-alpine3.20 AS production
+RUN apk add --no-cache bash curl
 
 WORKDIR /app
 
-# Nicht-root User erstellen für Sicherheit
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S kairos -u 1001
+# Copy package files and install production dependencies
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --only=production
 
-# Produktions-Abhängigkeiten aus base-stage kopieren
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package*.json ./
-
-# Kompilierte Anwendung aus build-stage kopieren
+# Copy built application
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
-# Modellverzeichnis erstellen
-RUN mkdir -p ./models && chown -R kairos:nodejs ./models
+# Create user and directories
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S kairos -u 1001 -G nodejs && \
+    mkdir -p /app/logs /app/models /app/data /app/scripts && \
+    chown -R kairos:nodejs /app
 
-# Datenbankverzeichnis erstellen
-RUN mkdir -p ./data && chown -R kairos:nodejs ./data
+# Create init script directly in Dockerfile
+RUN cat > /app/scripts/docker-init.sh << 'EOF'
+#!/bin/bash
+echo "🚀 KAIROS Docker Initialisierung..."
 
-# Log-Verzeichnis erstellen
-RUN mkdir -p ./logs && chown -R kairos:nodejs ./logs
+# Warten auf Datenbank
+echo "⏳ Warte auf PostgreSQL..."
+until npx prisma db ping > /dev/null 2>&1; do
+  echo "  - Datenbank noch nicht bereit, warte 2 Sekunden..."
+  sleep 2
+done
 
-# Berechtigungen für User setzen
-RUN chown -R kairos:nodejs /app
+echo "✅ Datenbank ist bereit!"
 
-# Zu nicht-root User wechseln
-USER kairos
+# Prisma-Schema anwenden
+echo "🔄 Wende Prisma-Schema an..."
+npx prisma db push
 
-# Prisma Client generieren
-RUN npx prisma generate
+echo "✅ Initialisierung abgeschlossen!"
 
-# Healthcheck hinzufügen
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "process.exit(0)" || exit 1
+# Anwendung starten
+echo "🚀 Starte KAIROS..."
+exec "$@"
+EOF
 
-# Port exponieren (falls später Web-Interface hinzugefügt wird)
-EXPOSE 3000
-
-# Scripts kopieren und ausführbar machen
-COPY scripts/docker-init.sh /app/scripts/
+# Make script executable
 RUN chmod +x /app/scripts/docker-init.sh
 
-# Startup-Script als Entrypoint
-ENTRYPOINT ["/app/scripts/docker-init.sh"]
-CMD ["npm", "run", "start:prod"]
+# Switch to non-root user
+USER kairos
 
-# Labels für bessere Wartung
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD node -e "process.exit(0)" || exit 1
+
+# Labels
 LABEL org.opencontainers.image.title="KAIROS"
 LABEL org.opencontainers.image.description="KI-gestützte Aktienanalyse-CLI"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.vendor="KAIROS Team"
+
+# Use init script as entrypoint
+ENTRYPOINT ["/app/scripts/docker-init.sh"]
+CMD ["npm", "run", "start:prod"]

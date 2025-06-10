@@ -12,9 +12,9 @@ services:
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - kairos_network
     restart: unless-stopped
@@ -38,7 +38,7 @@ services:
       - ml_models:/app/models
       - ml_logs:/app/logs
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - kairos_network
     restart: unless-stopped
@@ -99,7 +99,8 @@ services:
       - .env
     volumes:
       # Log-Dateien
-      - app_logs:/app/logs
+      - ./logs:/app/logs
+      - ./models:/app/models
     networks:
       - kairos_network
     depends_on:
