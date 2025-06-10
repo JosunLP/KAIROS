@@ -7,9 +7,13 @@
 	"license": "MIT",
 	"bin": {
 		"kairos": "./dist/main.js"
-	},
-	"scripts": {
+	},	"scripts": {
 		"setup": "node setup.js",
+		"setup-env": "node scripts/setup-env.js",
+		"validate-env": "node scripts/validate-env.js",
+		"cron-status": "node scripts/cron-manager.js status",
+		"cron-test": "node scripts/cron-manager.js test",
+		"cron-logs": "node scripts/cron-manager.js logs",
 		"docker:setup": "node docker-setup.js",
 		"build": "nest build",
 		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

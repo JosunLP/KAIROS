@@ -311,6 +311,27 @@ export class NotificationService {
   }
 
   /**
+   * Sendet einen Alert für kritische Situationen
+   */
+  async sendAlert(
+    title: string,
+    message: string,
+    priority: "low" | "medium" | "high" | "critical" = "medium",
+    component: string = "SYSTEM",
+  ): Promise<string> {
+    const type =
+      priority === "critical"
+        ? "CRITICAL"
+        : priority === "high"
+          ? "ERROR"
+          : priority === "medium"
+            ? "WARNING"
+            : "INFO";
+
+    return this.notify(type, title, message, component, { priority });
+  }
+
+  /**
    * Benachrichtigung als bestätigt markieren
    */
   acknowledge(notificationId: string): boolean {
