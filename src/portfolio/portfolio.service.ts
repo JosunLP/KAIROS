@@ -1,14 +1,11 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { PrismaService } from "../persistence/prisma.service";
+import { Injectable, Logger } from '@nestjs/common';
 import {
   Portfolio,
-  Position,
   PortfolioPosition,
+  Position,
   RiskAssessment,
-  RiskMetrics,
-  SystemHealth,
-  SystemAlert,
-} from "../common/types";
+} from '../common/types';
+import { PrismaService } from '../persistence/prisma.service';
 
 export interface PortfolioMetrics {
   totalValue: number;
@@ -121,7 +118,7 @@ export class PortfolioService {
 
       // Prüfe ob Position bereits existiert
       const existingPosition = portfolio.positions.find(
-        (p) => p.ticker === ticker,
+        p => p.ticker === ticker,
       );
 
       if (existingPosition) {
@@ -176,7 +173,7 @@ export class PortfolioService {
       }
 
       const positionIndex = portfolio.positions.findIndex(
-        (p) => p.ticker === ticker,
+        p => p.ticker === ticker,
       );
       if (positionIndex === -1) {
         throw new Error(`Position ${ticker} nicht im Portfolio gefunden`);
@@ -207,13 +204,13 @@ export class PortfolioService {
     try {
       // Hole aktuelle Preise für alle Positionen
       const currentPrices = await this.getCurrentPrices(
-        portfolio.positions.map((p) => p.ticker),
+        portfolio.positions.map(p => p.ticker),
       );
 
       // Berechne Gesamtwert
       let totalValue = 0;
       const updatedPositions: PortfolioPosition[] = portfolio.positions.map(
-        (position) => {
+        position => {
           const currentPrice =
             currentPrices.get(position.ticker) || position.averagePrice;
           const positionValue = position.quantity * currentPrice;
@@ -233,7 +230,7 @@ export class PortfolioService {
       );
 
       // Berechne Gewichtungen
-      updatedPositions.forEach((position) => {
+      updatedPositions.forEach(position => {
         position.weight =
           ((position.quantity *
             (position.currentPrice || position.averagePrice)) /
@@ -258,7 +255,7 @@ export class PortfolioService {
 
       return metrics;
     } catch (error) {
-      this.logger.error("Fehler bei Portfolio-Metrik-Berechnung:", error);
+      this.logger.error('Fehler bei Portfolio-Metrik-Berechnung:', error);
       throw error;
     }
   }
@@ -269,9 +266,6 @@ export class PortfolioService {
   async assessPortfolioRisk(portfolio: Portfolio): Promise<RiskAssessment> {
     try {
       const metrics = await this.calculatePortfolioMetrics(portfolio);
-      const positionRisks = await this.calculatePositionRisks(
-        portfolio.positions,
-      );
 
       // Berechne Gesamtrisiko-Score
       let riskScore = 0;
@@ -280,48 +274,48 @@ export class PortfolioService {
       // Volatilitätsrisiko
       if (metrics.volatility > 0.3) {
         riskScore += 30;
-        riskFactors.push("Hohe Volatilität");
+        riskFactors.push('Hohe Volatilität');
       } else if (metrics.volatility > 0.2) {
         riskScore += 15;
-        riskFactors.push("Mittlere Volatilität");
+        riskFactors.push('Mittlere Volatilität');
       }
 
       // Konzentrations-Risiko
       const totalPortfolioValue = portfolio.totalValue || 1;
       const maxWeight = Math.max(
-        ...portfolio.positions.map((p) => {
+        ...portfolio.positions.map(p => {
           const positionValue = p.quantity * (p.currentPrice || p.averagePrice);
           return (positionValue / totalPortfolioValue) * 100;
         }),
       );
       if (maxWeight > 30) {
         riskScore += 25;
-        riskFactors.push("Hohe Konzentration in Einzelposition");
+        riskFactors.push('Hohe Konzentration in Einzelposition');
       } else if (maxWeight > 20) {
         riskScore += 10;
-        riskFactors.push("Mittlere Konzentration");
+        riskFactors.push('Mittlere Konzentration');
       }
 
       // Drawdown-Risiko
       if (metrics.maxDrawdown > 0.2) {
         riskScore += 20;
-        riskFactors.push("Hohes Drawdown-Risiko");
+        riskFactors.push('Hohes Drawdown-Risiko');
       }
 
       // Sharpe Ratio (niedrig = höheres Risiko)
       if (metrics.sharpeRatio < 0.5) {
         riskScore += 15;
-        riskFactors.push("Niedrige risikoadjustierte Rendite");
+        riskFactors.push('Niedrige risikoadjustierte Rendite');
       } // Bestimme Risiko-Level
-      let riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+      let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
       if (riskScore >= 75) {
-        riskLevel = "CRITICAL";
+        riskLevel = 'CRITICAL';
       } else if (riskScore >= 60) {
-        riskLevel = "HIGH";
+        riskLevel = 'HIGH';
       } else if (riskScore >= 30) {
-        riskLevel = "MEDIUM";
+        riskLevel = 'MEDIUM';
       } else {
-        riskLevel = "LOW";
+        riskLevel = 'LOW';
       }
 
       const riskAssessment: RiskAssessment = {
@@ -349,9 +343,7 @@ export class PortfolioService {
           correlation: 0.6,
         },
         alerts: [],
-        recommendations: riskFactors.map(
-          (factor) => `Überprüfen Sie: ${factor}`,
-        ),
+        recommendations: riskFactors.map(factor => `Überprüfen Sie: ${factor}`),
         timestamp: new Date(),
         compliance: {
           isCompliant: true,
@@ -362,7 +354,7 @@ export class PortfolioService {
 
       return riskAssessment;
     } catch (error) {
-      this.logger.error("Fehler bei Risikobewertung:", error);
+      this.logger.error('Fehler bei Risikobewertung:', error);
       throw error;
     }
   }
@@ -370,10 +362,10 @@ export class PortfolioService {
   /**
    * Optimiert Portfolio-Allokation (vereinfachte Mean Reversion)
    */
-  async optimizePortfolio(portfolio: Portfolio): Promise<PortfolioPosition[]> {
+  async optimizePortfolio(_portfolio: Portfolio): Promise<PortfolioPosition[]> {
     try {
       // Hole historische Daten für alle Positionen
-      const positions = portfolio.positions;
+      const positions = _portfolio.positions;
       const optimizedPositions: PortfolioPosition[] = [];
 
       for (const position of positions) {
@@ -402,7 +394,7 @@ export class PortfolioService {
         (sum, pos) => sum + (pos.weight || 0),
         0,
       );
-      optimizedPositions.forEach((pos) => {
+      optimizedPositions.forEach(pos => {
         if (pos.weight && totalWeight > 0) {
           pos.weight = (pos.weight / totalWeight) * 100;
         }
@@ -410,7 +402,7 @@ export class PortfolioService {
 
       return optimizedPositions;
     } catch (error) {
-      this.logger.error("Fehler bei Portfolio-Optimierung:", error);
+      this.logger.error('Fehler bei Portfolio-Optimierung:', error);
       throw error;
     }
   }
@@ -426,7 +418,7 @@ export class PortfolioService {
       try {
         const latestData = await this.prisma.historicalData.findFirst({
           where: { stock: { ticker } },
-          orderBy: { timestamp: "desc" },
+          orderBy: { timestamp: 'desc' },
         });
 
         if (latestData) {
@@ -441,7 +433,7 @@ export class PortfolioService {
   }
 
   private async calculatePortfolioReturns(
-    positions: PortfolioPosition[],
+    _positions: PortfolioPosition[],
   ): Promise<number[]> {
     // Vereinfachte Implementierung - in Realität würde man historische Portfolio-Werte berechnen
     const returns: number[] = [];
@@ -505,7 +497,7 @@ export class PortfolioService {
     let totalCost = 0;
     let totalValue = 0;
 
-    positions.forEach((position) => {
+    positions.forEach(position => {
       totalCost += position.quantity * position.averagePrice;
       totalValue +=
         position.quantity * (position.currentPrice || position.averagePrice);
@@ -515,30 +507,10 @@ export class PortfolioService {
   }
 
   private async calculatePositionRisks(
-    positions: PortfolioPosition[],
+    _positions: PortfolioPosition[],
   ): Promise<PositionRisk[]> {
-    const risks: PositionRisk[] = [];
-
-    for (const position of positions) {
-      const historicalData = await this.getHistoricalReturns(
-        position.ticker,
-        252,
-      );
-
-      risks.push({
-        ticker: position.ticker,
-        weight: position.weight || 0,
-        var95: this.calculateVaR(historicalData, 0.95),
-        expectedShortfall: this.calculateExpectedShortfall(
-          historicalData,
-          0.95,
-        ),
-        correlation: 0.5, // Placeholder - würde gegen Markt-Index berechnet
-        beta: 1.0, // Placeholder - würde gegen Markt-Index berechnet
-      });
-    }
-
-    return risks;
+    // Placeholder implementation
+    return [];
   }
 
   private async getHistoricalReturns(
@@ -547,7 +519,7 @@ export class PortfolioService {
   ): Promise<number[]> {
     const data = await this.prisma.historicalData.findMany({
       where: { stock: { ticker } },
-      orderBy: { timestamp: "desc" },
+      orderBy: { timestamp: 'desc' },
       take: days + 1,
     });
 
@@ -576,32 +548,6 @@ export class PortfolioService {
     );
   }
 
-  private calculateVaR(returns: number[], confidence: number): number {
-    if (returns.length === 0) return 0;
-
-    const sortedReturns = [...returns].sort((a, b) => a - b);
-    const index = Math.floor((1 - confidence) * sortedReturns.length);
-
-    return Math.abs(sortedReturns[index] || 0);
-  }
-
-  private calculateExpectedShortfall(
-    returns: number[],
-    confidence: number,
-  ): number {
-    if (returns.length === 0) return 0;
-
-    const sortedReturns = [...returns].sort((a, b) => a - b);
-    const cutoffIndex = Math.floor((1 - confidence) * sortedReturns.length);
-
-    const tailReturns = sortedReturns.slice(0, cutoffIndex);
-    return tailReturns.length > 0
-      ? Math.abs(
-          tailReturns.reduce((sum, r) => sum + r, 0) / tailReturns.length,
-        )
-      : 0;
-  }
-
   private generateId(): string {
     return Math.random().toString(36).substr(2, 9);
   }
@@ -620,12 +566,12 @@ export class PortfolioService {
   private isPortfolioPosition(
     position: Position | PortfolioPosition,
   ): position is PortfolioPosition {
-    return "ticker" in position && "lastUpdated" in position;
+    return 'ticker' in position && 'lastUpdated' in position;
   }
 
   private isPosition(
     position: Position | PortfolioPosition,
   ): position is Position {
-    return "symbol" in position && !("ticker" in position);
+    return 'symbol' in position && !('ticker' in position);
   }
 }

@@ -1,16 +1,16 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../persistence/prisma.service";
-import { AnalysisEngineService } from "../analysis-engine/analysis-engine.service";
+import { Injectable } from '@nestjs/common';
+import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
 import {
   Portfolio,
   PortfolioPosition,
+  RiskAlert,
   RiskAssessment,
   RiskLimits,
-  RiskAlert,
   RiskMetrics,
   SectorExposure,
   StockData,
-} from "../common/types";
+} from '../common/types';
+import { PrismaService } from '../persistence/prisma.service';
 
 @Injectable()
 export class RiskManagementService {
@@ -23,9 +23,9 @@ export class RiskManagementService {
   private isPortfolioPosition(position: any): position is PortfolioPosition {
     return (
       position &&
-      typeof position.ticker === "string" &&
-      typeof position.quantity === "number" &&
-      typeof position.averagePrice === "number"
+      typeof position.ticker === 'string' &&
+      typeof position.quantity === 'number' &&
+      typeof position.averagePrice === 'number'
     );
   }
 
@@ -41,10 +41,10 @@ export class RiskManagementService {
       timestamp: new Date(),
       riskScore: this.calculateRiskScore(riskMetrics),
       riskLevel: this.determineRiskLevel(riskMetrics, riskLimits) as
-        | "LOW"
-        | "MEDIUM"
-        | "HIGH"
-        | "CRITICAL",
+        | 'LOW'
+        | 'MEDIUM'
+        | 'HIGH'
+        | 'CRITICAL',
       metrics: riskMetrics,
       alerts,
       recommendations: this.generateRecommendations(riskMetrics, alerts),
@@ -91,16 +91,16 @@ export class RiskManagementService {
     );
 
     // Mock sector assignment based on ticker
-    positions.forEach((position) => {
-      let sector = "Other";
+    positions.forEach(position => {
+      let sector = 'Other';
       const ticker = position.ticker.toUpperCase();
 
-      if (["AAPL", "MSFT", "GOOGL", "TSLA", "NVDA"].includes(ticker)) {
-        sector = "Technology";
-      } else if (["JPM", "BAC", "WFC", "GS"].includes(ticker)) {
-        sector = "Banking";
-      } else if (["JNJ", "PFE", "UNH", "ABBV"].includes(ticker)) {
-        sector = "Healthcare";
+      if (['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA'].includes(ticker)) {
+        sector = 'Technology';
+      } else if (['JPM', 'BAC', 'WFC', 'GS'].includes(ticker)) {
+        sector = 'Banking';
+      } else if (['JNJ', 'PFE', 'UNH', 'ABBV'].includes(ticker)) {
+        sector = 'Healthcare';
       }
 
       const positionValue = position.quantity * (position.currentPrice || 0);
@@ -128,7 +128,7 @@ export class RiskManagementService {
       0,
     );
     const weights = positions.map(
-      (pos) => (pos.quantity * (pos.currentPrice || 0)) / totalValue,
+      pos => (pos.quantity * (pos.currentPrice || 0)) / totalValue,
     );
 
     // Herfindahl-Hirschman Index
@@ -137,25 +137,24 @@ export class RiskManagementService {
 
   async checkRiskLimits(
     portfolio: Portfolio,
-    riskLimits: RiskLimits,
+    _limits: RiskLimits,
   ): Promise<RiskAlert[]> {
     const alerts: RiskAlert[] = [];
     const positions = portfolio.positions.filter(this.isPortfolioPosition);
     const sectorExposure = await this.calculateSectorExposure(positions);
-    const concentrationRisk = this.calculateConcentrationRisk(positions);
 
     // Position size checks
-    positions.forEach((position) => {
+    positions.forEach(position => {
       const positionWeight = position.weight || 0;
-      if (positionWeight > riskLimits.maxPositionSize / 100) {
+      if (positionWeight > _limits.maxPositionSize / 100) {
         alerts.push({
           id: `pos-${position.ticker}`,
-          type: "POSITION_SIZE",
-          severity: "HIGH",
-          metric: "Position Size",
+          type: 'POSITION_SIZE',
+          severity: 'HIGH',
+          metric: 'Position Size',
           currentValue: positionWeight * 100,
           value: positionWeight,
-          threshold: riskLimits.maxPositionSize,
+          threshold: _limits.maxPositionSize,
           message: `Position ${position.ticker} exceeds maximum size limit`,
           timestamp: new Date(),
           portfolioId: portfolio.id,
@@ -164,16 +163,16 @@ export class RiskManagementService {
     });
 
     // Sector exposure checks
-    sectorExposure.forEach((sector) => {
-      if (sector.percentage > riskLimits.maxSectorExposure) {
+    sectorExposure.forEach(sector => {
+      if (sector.percentage > _limits.maxSectorExposure) {
         alerts.push({
           id: `sector-${sector.sector}`,
-          type: "CONCENTRATION",
-          severity: "MEDIUM",
-          metric: "Sector Exposure",
+          type: 'CONCENTRATION',
+          severity: 'MEDIUM',
+          metric: 'Sector Exposure',
           currentValue: sector.percentage,
           value: sector.percentage / 100,
-          threshold: riskLimits.maxSectorExposure,
+          threshold: _limits.maxSectorExposure,
           message: `${sector.sector} sector exposure exceeds limit`,
           timestamp: new Date(),
           portfolioId: portfolio.id,
@@ -200,36 +199,36 @@ export class RiskManagementService {
   }
   private determineRiskLevel(
     metrics: RiskMetrics,
-    limits: RiskLimits,
-  ): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
+    _limits: RiskLimits,
+  ): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     const score = this.calculateRiskScore(metrics);
 
-    if (score < 30) return "LOW";
-    if (score < 70) return "MEDIUM";
-    return "HIGH";
+    if (score < 30) return 'LOW';
+    if (score < 70) return 'MEDIUM';
+    return 'HIGH';
   }
 
   private generateRecommendations(
-    metrics: RiskMetrics,
+    _metrics: RiskMetrics,
     alerts: RiskAlert[],
   ): string[] {
     const recommendations: string[] = [];
 
     if (alerts.length > 0) {
       recommendations.push(
-        "Review risk limit violations and consider rebalancing",
+        'Review risk limit violations and consider rebalancing',
       );
     }
 
-    if (metrics.concentrationRisk > 0.5) {
+    if (_metrics.concentrationRisk > 0.5) {
       recommendations.push(
-        "Consider diversifying portfolio to reduce concentration risk",
+        'Consider diversifying portfolio to reduce concentration risk',
       );
     }
 
-    if (metrics.volatility > 0.3) {
+    if (_metrics.volatility > 0.3) {
       recommendations.push(
-        "High volatility detected - consider reducing position sizes",
+        'High volatility detected - consider reducing position sizes',
       );
     }
 
@@ -238,34 +237,34 @@ export class RiskManagementService {
 
   // Placeholder implementations for complex calculations
   private async calculatePortfolioVolatility(
-    positions: PortfolioPosition[],
+    _positions: PortfolioPosition[],
   ): Promise<number> {
     // Simple mock implementation
     return 0.15 + Math.random() * 0.1;
   }
 
-  private async calculateSharpeRatio(portfolio: Portfolio): Promise<number> {
+  private async calculateSharpeRatio(_portfolio: Portfolio): Promise<number> {
     // Mock implementation
     return 1.2 + Math.random() * 0.5;
   }
 
   private async calculateMaxDrawdown(
-    positions: PortfolioPosition[],
+    _positions: PortfolioPosition[],
   ): Promise<number> {
     // Mock implementation
     return 0.05 + Math.random() * 0.1;
   }
 
   private async calculatePortfolioBeta(
-    positions: PortfolioPosition[],
+    _positions: PortfolioPosition[],
   ): Promise<number> {
     // Mock implementation
     return 0.8 + Math.random() * 0.4;
   }
 
   private async calculateVaR(
-    positions: PortfolioPosition[],
-    confidence: number,
+    _positions: PortfolioPosition[],
+    _confidence: number,
   ): Promise<number> {
     // Mock implementation
     return 0.03 + Math.random() * 0.02;

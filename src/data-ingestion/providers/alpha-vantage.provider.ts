@@ -1,34 +1,34 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import axios, { AxiosInstance } from "axios";
-import axiosRetry from "axios-retry";
-import { DataProvider, MarketDataPoint } from "../data-ingestion.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import axios, { AxiosInstance } from 'axios';
+import axiosRetry from 'axios-retry';
+import { DataProvider, MarketDataPoint } from '../data-ingestion.service';
 
 @Injectable()
 export class AlphaVantageProvider implements DataProvider {
-  public readonly name = "Alpha Vantage";
+  public readonly name = 'Alpha Vantage';
   private readonly logger = new Logger(AlphaVantageProvider.name);
   private readonly httpClient: AxiosInstance;
   private readonly apiKey: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.apiKey = this.configService.get<string>("ALPHA_VANTAGE_API_KEY", "");
+    this.apiKey = this.configService.get<string>('ALPHA_VANTAGE_API_KEY', '');
 
     this.httpClient = axios.create({
-      baseURL: "https://www.alphavantage.co",
+      baseURL: 'https://www.alphavantage.co',
       timeout: 30000,
     });
 
     // Retry-Mechanismus konfigurieren
     axiosRetry(this.httpClient, {
-      retries: this.configService.get<number>("API_RETRY_ATTEMPTS", 3),
-      retryDelay: (retryCount) => {
+      retries: this.configService.get<number>('API_RETRY_ATTEMPTS', 3),
+      retryDelay: retryCount => {
         return (
           retryCount *
-          this.configService.get<number>("API_RETRY_DELAY_MS", 1000)
+          this.configService.get<number>('API_RETRY_DELAY_MS', 1000)
         );
       },
-      retryCondition: (error) => {
+      retryCondition: error => {
         return (
           axiosRetry.isNetworkOrIdempotentRequestError(error) ||
           error.response?.status === 429
@@ -38,7 +38,7 @@ export class AlphaVantageProvider implements DataProvider {
   }
 
   isConfigured(): boolean {
-    return !!this.apiKey && this.apiKey !== "";
+    return !!this.apiKey && this.apiKey !== '';
   }
 
   async fetchHistoricalData(
@@ -46,45 +46,50 @@ export class AlphaVantageProvider implements DataProvider {
     days: number = 365,
   ): Promise<MarketDataPoint[]> {
     if (!this.isConfigured()) {
-      throw new Error("Alpha Vantage API-Schlüssel nicht konfiguriert");
+      throw new Error('Alpha Vantage API-Schlüssel nicht konfiguriert');
     }
 
     try {
       this.logger.debug(`Starte API-Aufruf für ${ticker} mit ${days} Tagen`);
-      
-      const response = await this.httpClient.get("/query", {
+
+      const response = await this.httpClient.get('/query', {
         params: {
-          function: "TIME_SERIES_DAILY",
+          function: 'TIME_SERIES_DAILY',
           symbol: ticker,
-          outputsize: days > 100 ? "full" : "compact",
+          outputsize: days > 100 ? 'full' : 'compact',
           apikey: this.apiKey,
         },
       });
 
       const data = response.data;
-      
-      // Debug: Logge die Struktur der API-Antwort
-      this.logger.debug(`API-Antwort Schlüssel: ${Object.keys(data).join(', ')}`);
 
-      if (data["Error Message"]) {
-        throw new Error(`Alpha Vantage API-Fehler: ${data["Error Message"]}`);
+      // Debug: Logge die Struktur der API-Antwort
+      this.logger.debug(
+        `API-Antwort Schlüssel: ${Object.keys(data).join(', ')}`,
+      );
+
+      if (data['Error Message']) {
+        throw new Error(`Alpha Vantage API-Fehler: ${data['Error Message']}`);
       }
 
-      if (data["Note"]) {
-        throw new Error(`Alpha Vantage Rate Limit erreicht: ${data["Note"]}`);
+      if (data['Note']) {
+        throw new Error(`Alpha Vantage Rate Limit erreicht: ${data['Note']}`);
       }
 
       // Verschiedene mögliche Schlüssel für Zeitreihendaten prüfen
-      const timeSeries = 
-        data["Time Series (Daily)"] || 
-        data["Daily Time Series"] ||
-        data["time_series_daily"] ||
+      const timeSeries =
+        data['Time Series (Daily)'] ||
+        data['Daily Time Series'] ||
+        data['time_series_daily'] ||
         null;
-        
+
       if (!timeSeries) {
         // Mehr Details über die API-Antwort loggen
-        this.logger.error(`API-Antwort für ${ticker}:`, JSON.stringify(data, null, 2));
-        throw new Error("Keine Zeitreihendaten in der API-Antwort gefunden");
+        this.logger.error(
+          `API-Antwort für ${ticker}:`,
+          JSON.stringify(data, null, 2),
+        );
+        throw new Error('Keine Zeitreihendaten in der API-Antwort gefunden');
       }
 
       const dataPoints: MarketDataPoint[] = [];
@@ -100,11 +105,11 @@ export class AlphaVantageProvider implements DataProvider {
 
         const point: MarketDataPoint = {
           timestamp,
-          open: parseFloat((values as any)["1. open"]),
-          high: parseFloat((values as any)["2. high"]),
-          low: parseFloat((values as any)["3. low"]),
-          close: parseFloat((values as any)["4. close"]),
-          volume: parseInt((values as any)["5. volume"]),
+          open: parseFloat((values as any)['1. open']),
+          high: parseFloat((values as any)['2. high']),
+          low: parseFloat((values as any)['3. low']),
+          close: parseFloat((values as any)['4. close']),
+          volume: parseInt((values as any)['5. volume']),
         };
 
         dataPoints.push(point);
@@ -128,13 +133,13 @@ export class AlphaVantageProvider implements DataProvider {
 
   async fetchLatestData(ticker: string): Promise<MarketDataPoint | null> {
     if (!this.isConfigured()) {
-      throw new Error("Alpha Vantage API-Schlüssel nicht konfiguriert");
+      throw new Error('Alpha Vantage API-Schlüssel nicht konfiguriert');
     }
 
     try {
-      const response = await this.httpClient.get("/query", {
+      const response = await this.httpClient.get('/query', {
         params: {
-          function: "GLOBAL_QUOTE",
+          function: 'GLOBAL_QUOTE',
           symbol: ticker,
           apikey: this.apiKey,
         },
@@ -142,15 +147,15 @@ export class AlphaVantageProvider implements DataProvider {
 
       const data = response.data;
 
-      if (data["Error Message"]) {
-        throw new Error(`Alpha Vantage API-Fehler: ${data["Error Message"]}`);
+      if (data['Error Message']) {
+        throw new Error(`Alpha Vantage API-Fehler: ${data['Error Message']}`);
       }
 
-      if (data["Note"]) {
-        throw new Error(`Alpha Vantage Rate Limit erreicht: ${data["Note"]}`);
+      if (data['Note']) {
+        throw new Error(`Alpha Vantage Rate Limit erreicht: ${data['Note']}`);
       }
 
-      const quote = data["Global Quote"];
+      const quote = data['Global Quote'];
       if (!quote) {
         this.logger.warn(
           `Keine aktuellen Daten für ${ticker} von Alpha Vantage erhalten`,
@@ -159,12 +164,12 @@ export class AlphaVantageProvider implements DataProvider {
       }
 
       const point: MarketDataPoint = {
-        timestamp: new Date(quote["07. latest trading day"]),
-        open: parseFloat(quote["02. open"]),
-        high: parseFloat(quote["03. high"]),
-        low: parseFloat(quote["04. low"]),
-        close: parseFloat(quote["05. price"]),
-        volume: parseInt(quote["06. volume"]),
+        timestamp: new Date(quote['07. latest trading day']),
+        open: parseFloat(quote['02. open']),
+        high: parseFloat(quote['03. high']),
+        low: parseFloat(quote['04. low']),
+        close: parseFloat(quote['05. price']),
+        volume: parseInt(quote['06. volume']),
       };
 
       this.logger.debug(

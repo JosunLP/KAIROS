@@ -1,13 +1,13 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { NotificationService } from "../common/notification.service";
-import { ConfigService } from "../config/config.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { NotificationService } from '../common/notification.service';
+import { ConfigService } from '../config/config.service';
 
 export interface CronJobMetrics {
   jobName: string;
   startTime: Date;
   endTime?: Date;
   duration?: number;
-  status: "running" | "success" | "failed";
+  status: 'running' | 'success' | 'failed';
   error?: string;
   consecutiveFailures: number;
   lastRunTime?: Date;
@@ -36,7 +36,7 @@ export class CronMonitoringService {
     const metrics: CronJobMetrics = {
       jobName,
       startTime: new Date(),
-      status: "running",
+      status: 'running',
       consecutiveFailures: this.getConsecutiveFailures(jobName),
     };
 
@@ -47,7 +47,7 @@ export class CronMonitoringService {
   /**
    * Beendet die Überwachung eines Cron Jobs erfolgreich
    */
-  completeJob(jobName: string, details?: any): void {
+  completeJob(jobName: string, _details?: any): void {
     if (!this.configService.enableCronMonitoring) {
       return;
     }
@@ -60,7 +60,7 @@ export class CronMonitoringService {
 
     metrics.endTime = new Date();
     metrics.duration = metrics.endTime.getTime() - metrics.startTime.getTime();
-    metrics.status = "success";
+    metrics.status = 'success';
     metrics.consecutiveFailures = 0;
     metrics.lastRunTime = new Date();
 
@@ -95,7 +95,7 @@ export class CronMonitoringService {
 
     metrics.endTime = new Date();
     metrics.duration = metrics.endTime.getTime() - metrics.startTime.getTime();
-    metrics.status = "failed";
+    metrics.status = 'failed';
     metrics.error = error instanceof Error ? error.message : error;
     metrics.consecutiveFailures = this.getConsecutiveFailures(jobName) + 1;
 
@@ -125,12 +125,12 @@ export class CronMonitoringService {
       if (this.configService.enableCronNotifications) {
         try {
           await this.notificationService.sendAlert(
-            "Kritischer Cron Job Fehler",
+            'Kritischer Cron Job Fehler',
             message,
-            "high",
+            'high',
           );
         } catch (error) {
-          this.logger.error("Fehler beim Senden der Benachrichtigung:", error);
+          this.logger.error('Fehler beim Senden der Benachrichtigung:', error);
         }
       }
 
@@ -146,7 +146,7 @@ export class CronMonitoringService {
     let failures = 0;
 
     for (let i = history.length - 1; i >= 0; i--) {
-      if (history[i].status === "failed") {
+      if (history[i].status === 'failed') {
         failures++;
       } else {
         break;
@@ -204,7 +204,7 @@ export class CronMonitoringService {
     for (const [jobName, history] of this.jobHistory.entries()) {
       const recentRuns = history.slice(-10);
       const successRate =
-        (recentRuns.filter((r) => r.status === "success").length /
+        (recentRuns.filter(r => r.status === 'success').length /
           recentRuns.length) *
         100;
       const avgDuration =

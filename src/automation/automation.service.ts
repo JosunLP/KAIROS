@@ -3,19 +3,19 @@ import {
   Logger,
   OnModuleInit,
   OnModuleDestroy,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { DataIngestionService } from "../data-ingestion/data-ingestion.service";
-import { AnalysisEngineService } from "../analysis-engine/analysis-engine.service";
-import { MlPredictionService } from "../ml-prediction/ml-prediction.service";
-import { PortfolioService } from "../portfolio/portfolio.service";
-import { RiskManagementService } from "../portfolio/risk-management.service";
-import { BacktestService } from "../portfolio/backtest.service";
-import { TasksService } from "../scheduling/tasks.service";
-import { PrismaService } from "../persistence/prisma.service";
-import { CacheService } from "../common/cache.service";
-import { MonitoringService } from "../common/monitoring.service";
-import { NotificationService } from "../common/notification.service";
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
+import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
+import { MlPredictionService } from '../ml-prediction/ml-prediction.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
+import { RiskManagementService } from '../portfolio/risk-management.service';
+import { BacktestService } from '../portfolio/backtest.service';
+import { TasksService } from '../scheduling/tasks.service';
+import { PrismaService } from '../persistence/prisma.service';
+import { CacheService } from '../common/cache.service';
+import { MonitoringService } from '../common/monitoring.service';
+import { NotificationService } from '../common/notification.service';
 
 export interface AutomationConfig {
   enabled: boolean;
@@ -44,27 +44,27 @@ export interface AutomationStatus {
   currentCycle: number;
   components: {
     dataIngestion: {
-      status: "active" | "idle" | "error";
+      status: 'active' | 'idle' | 'error';
       lastRun?: Date;
       errors: number;
     };
     analysis: {
-      status: "active" | "idle" | "error";
+      status: 'active' | 'idle' | 'error';
       lastRun?: Date;
       errors: number;
     };
     prediction: {
-      status: "active" | "idle" | "error";
+      status: 'active' | 'idle' | 'error';
       lastRun?: Date;
       errors: number;
     };
     portfolio: {
-      status: "active" | "idle" | "error";
+      status: 'active' | 'idle' | 'error';
       lastRun?: Date;
       errors: number;
     };
     riskManagement: {
-      status: "active" | "idle" | "error";
+      status: 'active' | 'idle' | 'error';
       lastRun?: Date;
       errors: number;
     };
@@ -115,11 +115,11 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    this.logger.log("🤖 Automation Service initialisiert");
+    this.logger.log('🤖 Automation Service initialisiert');
 
     // Auto-Start wenn in Konfiguration aktiviert
     if (this.config.enabled) {
-      this.logger.log("⚡ Auto-Start aktiviert - Vollautomatik wird gestartet");
+      this.logger.log('⚡ Auto-Start aktiviert - Vollautomatik wird gestartet');
       await this.startAutomation();
     }
   }
@@ -130,51 +130,51 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
 
   private initializeConfig() {
     this.config = {
-      enabled: this.configService.get<boolean>("AUTOMATION_ENABLED", false),
+      enabled: this.configService.get<boolean>('AUTOMATION_ENABLED', false),
       dataIngestionIntervalMs: this.configService.get<number>(
-        "AUTOMATION_DATA_INTERVAL_MS",
+        'AUTOMATION_DATA_INTERVAL_MS',
         5 * 60 * 1000,
       ), // 5 Min
       analysisIntervalMs: this.configService.get<number>(
-        "AUTOMATION_ANALYSIS_INTERVAL_MS",
+        'AUTOMATION_ANALYSIS_INTERVAL_MS',
         15 * 60 * 1000,
       ), // 15 Min
       predictionIntervalMs: this.configService.get<number>(
-        "AUTOMATION_PREDICTION_INTERVAL_MS",
+        'AUTOMATION_PREDICTION_INTERVAL_MS',
         30 * 60 * 1000,
       ), // 30 Min
       portfolioRebalanceIntervalMs: this.configService.get<number>(
-        "AUTOMATION_PORTFOLIO_INTERVAL_MS",
+        'AUTOMATION_PORTFOLIO_INTERVAL_MS',
         60 * 60 * 1000,
       ), // 1 Std
       riskCheckIntervalMs: this.configService.get<number>(
-        "AUTOMATION_RISK_INTERVAL_MS",
+        'AUTOMATION_RISK_INTERVAL_MS',
         10 * 60 * 1000,
       ), // 10 Min
       healthCheckIntervalMs: this.configService.get<number>(
-        "AUTOMATION_HEALTH_INTERVAL_MS",
+        'AUTOMATION_HEALTH_INTERVAL_MS',
         2 * 60 * 1000,
       ), // 2 Min
-      maxRetries: this.configService.get<number>("AUTOMATION_MAX_RETRIES", 3),
+      maxRetries: this.configService.get<number>('AUTOMATION_MAX_RETRIES', 3),
       retryDelayMs: this.configService.get<number>(
-        "AUTOMATION_RETRY_DELAY_MS",
+        'AUTOMATION_RETRY_DELAY_MS',
         30 * 1000,
       ), // 30 Sec
       stopOnCriticalError: this.configService.get<boolean>(
-        "AUTOMATION_STOP_ON_CRITICAL_ERROR",
+        'AUTOMATION_STOP_ON_CRITICAL_ERROR',
         true,
       ),
       notifications: {
         enabled: this.configService.get<boolean>(
-          "AUTOMATION_NOTIFICATIONS_ENABLED",
+          'AUTOMATION_NOTIFICATIONS_ENABLED',
           true,
         ),
         errorThreshold: this.configService.get<number>(
-          "AUTOMATION_ERROR_THRESHOLD",
+          'AUTOMATION_ERROR_THRESHOLD',
           5,
         ),
         successSummaryInterval: this.configService.get<number>(
-          "AUTOMATION_SUCCESS_SUMMARY_INTERVAL",
+          'AUTOMATION_SUCCESS_SUMMARY_INTERVAL',
           60 * 60 * 1000,
         ), // 1 Std
       },
@@ -188,11 +188,11 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
       failedCycles: 0,
       currentCycle: 0,
       components: {
-        dataIngestion: { status: "idle", errors: 0 },
-        analysis: { status: "idle", errors: 0 },
-        prediction: { status: "idle", errors: 0 },
-        portfolio: { status: "idle", errors: 0 },
-        riskManagement: { status: "idle", errors: 0 },
+        dataIngestion: { status: 'idle', errors: 0 },
+        analysis: { status: 'idle', errors: 0 },
+        prediction: { status: 'idle', errors: 0 },
+        portfolio: { status: 'idle', errors: 0 },
+        riskManagement: { status: 'idle', errors: 0 },
       },
       errors: [],
       performance: {
@@ -209,12 +209,12 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    */
   async startAutomation(): Promise<void> {
     if (this.isRunning) {
-      this.logger.warn("Automation läuft bereits");
+      this.logger.warn('Automation läuft bereits');
       return;
     }
 
     try {
-      this.logger.log("🚀 Starte Vollautomatik-Modus");
+      this.logger.log('🚀 Starte Vollautomatik-Modus');
 
       this.isRunning = true;
       this.shouldStop = false;
@@ -239,16 +239,16 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
       // Hauptüberwachungsschleife
       this.startMainLoop();
 
-      this.logger.log("✅ Vollautomatik-Modus erfolgreich gestartet");
+      this.logger.log('✅ Vollautomatik-Modus erfolgreich gestartet');
       if (this.config.notifications.enabled) {
         this.notificationService.info(
-          "KAIROS Automation gestartet",
+          'KAIROS Automation gestartet',
           `Vollautomatik-Modus wurde erfolgreich gestartet um ${new Date().toLocaleString()}`,
-          "AUTOMATION",
+          'AUTOMATION',
         );
       }
     } catch (error) {
-      this.logger.error("❌ Fehler beim Starten des Automation-Modus", error);
+      this.logger.error('❌ Fehler beim Starten des Automation-Modus', error);
       this.isRunning = false;
       this.status.isRunning = false;
       throw error;
@@ -260,11 +260,11 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    */
   async stopAutomation(): Promise<void> {
     if (!this.isRunning) {
-      this.logger.warn("Automation läuft nicht");
+      this.logger.warn('Automation läuft nicht');
       return;
     }
 
-    this.logger.log("🛑 Stoppe Vollautomatik-Modus");
+    this.logger.log('🛑 Stoppe Vollautomatik-Modus');
 
     this.shouldStop = true;
     this.isRunning = false;
@@ -273,12 +273,12 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
     // Alle Timer stoppen
     this.clearAllTimers();
 
-    this.logger.log("✅ Vollautomatik-Modus gestoppt");
+    this.logger.log('✅ Vollautomatik-Modus gestoppt');
     if (this.config.notifications.enabled) {
       this.notificationService.info(
-        "KAIROS Automation gestoppt",
+        'KAIROS Automation gestoppt',
         `Vollautomatik-Modus wurde gestoppt um ${new Date().toLocaleString()}`,
-        "AUTOMATION",
+        'AUTOMATION',
       );
     }
   }
@@ -294,13 +294,13 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
         this.status.successfulCycles++;
         this.retryCount = 0; // Reset bei Erfolg
       } catch (error) {
-        this.logger.error("Fehler in Hauptschleife", error);
+        this.logger.error('Fehler in Hauptschleife', error);
         this.status.failedCycles++;
         const errorMessage =
-          error instanceof Error ? error.message : "Unbekannter Fehler";
+          error instanceof Error ? error.message : 'Unbekannter Fehler';
         this.status.errors.push(`${new Date().toISOString()}: ${errorMessage}`);
 
-        await this.handleError(error, "main-loop");
+        await this.handleError(error, 'main-loop');
       }
 
       this.status.currentCycle++;
@@ -387,29 +387,29 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    * Führt Datenerfassung aus
    */
   private async executeDataIngestion(): Promise<void> {
-    const component = "dataIngestion";
-    this.status.components[component].status = "active";
+    const component = 'dataIngestion';
+    this.status.components[component].status = 'active';
 
     try {
-      this.logger.debug("🔄 Führe automatische Datenerfassung aus");
+      this.logger.debug('🔄 Führe automatische Datenerfassung aus');
 
       // Prüfe ob Marktzeiten (delegiere an TasksService)
       const taskStatus = await this.tasksService.getTaskStatus();
       if (!taskStatus.scheduling.isMarketHours) {
         this.logger.debug(
-          "Außerhalb Handelszeiten - Datenerfassung übersprungen",
+          'Außerhalb Handelszeiten - Datenerfassung übersprungen',
         );
-        this.status.components[component].status = "idle";
+        this.status.components[component].status = 'idle';
         return;
       }
 
       await this.dataIngestionService.fetchLatestDataForAllTrackedStocks();
 
-      this.status.components[component].status = "idle";
+      this.status.components[component].status = 'idle';
       this.status.components[component].lastRun = new Date();
-      this.logger.debug("✅ Automatische Datenerfassung abgeschlossen");
+      this.logger.debug('✅ Automatische Datenerfassung abgeschlossen');
     } catch (error) {
-      this.status.components[component].status = "error";
+      this.status.components[component].status = 'error';
       this.status.components[component].errors++;
       await this.handleError(error, component);
     }
@@ -419,19 +419,19 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    * Führt technische Analyse aus
    */
   private async executeAnalysis(): Promise<void> {
-    const component = "analysis";
-    this.status.components[component].status = "active";
+    const component = 'analysis';
+    this.status.components[component].status = 'active';
 
     try {
-      this.logger.debug("📊 Führe automatische technische Analyse aus");
+      this.logger.debug('📊 Führe automatische technische Analyse aus');
 
       await this.analysisEngineService.enrichLatestData();
 
-      this.status.components[component].status = "idle";
+      this.status.components[component].status = 'idle';
       this.status.components[component].lastRun = new Date();
-      this.logger.debug("✅ Automatische technische Analyse abgeschlossen");
+      this.logger.debug('✅ Automatische technische Analyse abgeschlossen');
     } catch (error) {
-      this.status.components[component].status = "error";
+      this.status.components[component].status = 'error';
       this.status.components[component].errors++;
       await this.handleError(error, component);
     }
@@ -441,11 +441,11 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    * Führt ML-Vorhersagen aus
    */
   private async executePredictions(): Promise<void> {
-    const component = "prediction";
-    this.status.components[component].status = "active";
+    const component = 'prediction';
+    this.status.components[component].status = 'active';
 
     try {
-      this.logger.debug("🔮 Führe automatische Vorhersagen aus");
+      this.logger.debug('🔮 Führe automatische Vorhersagen aus');
 
       const activeStocks = await this.prismaService.stock.findMany({
         where: { isActive: true },
@@ -455,17 +455,17 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
         try {
           await this.mlPredictionService.predictNext(stock.ticker);
           // Kurze Pause zwischen Vorhersagen
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
           this.logger.warn(`Fehler bei Vorhersage für ${stock.ticker}`, error);
         }
       }
 
-      this.status.components[component].status = "idle";
+      this.status.components[component].status = 'idle';
       this.status.components[component].lastRun = new Date();
-      this.logger.debug("✅ Automatische Vorhersagen abgeschlossen");
+      this.logger.debug('✅ Automatische Vorhersagen abgeschlossen');
     } catch (error) {
-      this.status.components[component].status = "error";
+      this.status.components[component].status = 'error';
       this.status.components[component].errors++;
       await this.handleError(error, component);
     }
@@ -475,11 +475,11 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    * Führt Portfolio-Management aus
    */
   private async executePortfolioManagement(): Promise<void> {
-    const component = "portfolio";
-    this.status.components[component].status = "active";
+    const component = 'portfolio';
+    this.status.components[component].status = 'active';
 
     try {
-      this.logger.debug("💼 Führe automatisches Portfolio-Management aus");
+      this.logger.debug('💼 Führe automatisches Portfolio-Management aus');
 
       // Hole alle aktiven Portfolios
       const portfolios = await this.portfolioService.getAllPortfolios();
@@ -495,11 +495,11 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      this.status.components[component].status = "idle";
+      this.status.components[component].status = 'idle';
       this.status.components[component].lastRun = new Date();
-      this.logger.debug("✅ Automatisches Portfolio-Management abgeschlossen");
+      this.logger.debug('✅ Automatisches Portfolio-Management abgeschlossen');
     } catch (error) {
-      this.status.components[component].status = "error";
+      this.status.components[component].status = 'error';
       this.status.components[component].errors++;
       await this.handleError(error, component);
     }
@@ -509,11 +509,11 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    * Führt Risikomanagement aus
    */
   private async executeRiskManagement(): Promise<void> {
-    const component = "riskManagement";
-    this.status.components[component].status = "active";
+    const component = 'riskManagement';
+    this.status.components[component].status = 'active';
 
     try {
-      this.logger.debug("⚠️ Führe automatisches Risikomanagement aus");
+      this.logger.debug('⚠️ Führe automatisches Risikomanagement aus');
 
       // Systemweite Risikoanalyse
       const portfolios = await this.portfolioService.getAllPortfolios();
@@ -538,8 +538,8 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
 
           // Warnung bei hohem Risiko
           if (
-            riskAssessment.riskLevel === "HIGH" ||
-            riskAssessment.riskLevel === "CRITICAL"
+            riskAssessment.riskLevel === 'HIGH' ||
+            riskAssessment.riskLevel === 'CRITICAL'
           ) {
             this.logger.warn(
               `${riskAssessment.riskLevel} Risiko in Portfolio ${portfolio.id} erkannt`,
@@ -549,7 +549,7 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
               this.notificationService.warning(
                 `${riskAssessment.riskLevel} Risiko in Portfolio ${portfolio.name}`,
                 `Risiko-Score: ${riskAssessment.riskScore}, Level: ${riskAssessment.riskLevel}`,
-                "RISK_MANAGEMENT",
+                'RISK_MANAGEMENT',
               );
             }
           }
@@ -561,11 +561,11 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      this.status.components[component].status = "idle";
+      this.status.components[component].status = 'idle';
       this.status.components[component].lastRun = new Date();
-      this.logger.debug("✅ Automatisches Risikomanagement abgeschlossen");
+      this.logger.debug('✅ Automatisches Risikomanagement abgeschlossen');
     } catch (error) {
-      this.status.components[component].status = "error";
+      this.status.components[component].status = 'error';
       this.status.components[component].errors++;
       await this.handleError(error, component);
     }
@@ -592,8 +592,8 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
         `💓 System-Health: ${this.status.performance.memoryUsageMB}MB RAM`,
       );
     } catch (error) {
-      this.logger.error("Health-Check fehlgeschlagen", error);
-      await this.handleError(error, "health-check");
+      this.logger.error('Health-Check fehlgeschlagen', error);
+      await this.handleError(error, 'health-check');
     }
   }
 
@@ -621,12 +621,12 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
 
       if (stockCount === 0) {
         this.logger.log(
-          "Keine Aktien gefunden - initialisiere Standard-Aktien",
+          'Keine Aktien gefunden - initialisiere Standard-Aktien',
         );
         await this.tasksService.initializeDefaultStocks();
       }
     } catch (error) {
-      this.logger.error("Fehler bei Initialisierung", error);
+      this.logger.error('Fehler bei Initialisierung', error);
     }
   }
 
@@ -635,7 +635,7 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    */
   private async handleError(error: any, component: string): Promise<void> {
     const errorMessage =
-      error instanceof Error ? error.message : "Unbekannter Fehler";
+      error instanceof Error ? error.message : 'Unbekannter Fehler';
     this.logger.error(`Fehler in ${component}: ${errorMessage}`, error);
 
     this.retryCount++;
@@ -645,13 +645,13 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
       this.config.stopOnCriticalError &&
       this.retryCount >= this.config.maxRetries
     ) {
-      this.logger.error("Maximale Wiederholungen erreicht - stoppe Automation");
+      this.logger.error('Maximale Wiederholungen erreicht - stoppe Automation');
 
       if (this.config.notifications.enabled) {
         this.notificationService.critical(
-          "KAIROS Automation gestoppt",
+          'KAIROS Automation gestoppt',
           `Kritischer Fehler: ${errorMessage}. Automation wurde gestoppt.`,
-          "AUTOMATION",
+          'AUTOMATION',
         );
       }
 
@@ -668,13 +668,13 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
       this.notificationService.error(
         `Fehler in ${component}`,
         `Wiederholte Fehler aufgetreten: ${errorMessage}`,
-        "AUTOMATION",
+        'AUTOMATION',
       );
     }
 
     // Retry-Delay
     if (this.retryCount < this.config.maxRetries) {
-      await new Promise((resolve) =>
+      await new Promise(resolve =>
         setTimeout(resolve, this.config.retryDelayMs),
       );
     }
@@ -721,7 +721,7 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
    */
   updateConfig(newConfig: Partial<AutomationConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    this.logger.log("Konfiguration aktualisiert", newConfig);
+    this.logger.log('Konfiguration aktualisiert', newConfig);
   }
 
   /**

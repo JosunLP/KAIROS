@@ -1,11 +1,11 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
-import { ConfigService } from "../config/config.service";
-import { DataIngestionService } from "../data-ingestion/data-ingestion.service";
-import { AnalysisEngineService } from "../analysis-engine/analysis-engine.service";
-import { MlPredictionService } from "../ml-prediction/ml-prediction.service";
-import { PrismaService } from "../persistence/prisma.service";
-import { CronMonitoringService } from "./cron-monitoring.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { ConfigService } from '../config/config.service';
+import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
+import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
+import { MlPredictionService } from '../ml-prediction/ml-prediction.service';
+import { PrismaService } from '../persistence/prisma.service';
+import { CronMonitoringService } from './cron-monitoring.service';
 
 @Injectable()
 export class TasksService {
@@ -23,34 +23,34 @@ export class TasksService {
   /**
    * Holt aktuelle Marktdaten alle 15 Minuten (während Handelszeiten)
    */
-  @Cron("*/15 * * * *", {
-    name: "fetchLatestData",
-    timeZone: "Europe/Berlin",
+  @Cron('*/15 * * * *', {
+    name: 'fetchLatestData',
+    timeZone: 'Europe/Berlin',
   })
   async handleDataIngestion() {
-    const jobName = "data-ingestion";
+    const jobName = 'data-ingestion';
     this.cronMonitoring.startJob(jobName);
 
     try {
       if (!this.isMarketHours()) {
         this.logger.debug(
-          "Außerhalb der Handelszeiten - Datenerfassung übersprungen",
+          'Außerhalb der Handelszeiten - Datenerfassung übersprungen',
         );
         this.cronMonitoring.completeJob(jobName, {
           skipped: true,
-          reason: "outside-market-hours",
+          reason: 'outside-market-hours',
         });
         return;
       }
 
-      this.logger.log("Starte geplante Datenerfassung");
+      this.logger.log('Starte geplante Datenerfassung');
       await this.dataIngestion.fetchLatestDataForAllTrackedStocks();
 
       this.cronMonitoring.completeJob(jobName, { processed: true });
-      this.logger.log("Geplante Datenerfassung abgeschlossen");
+      this.logger.log('Geplante Datenerfassung abgeschlossen');
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
-      this.logger.error("Fehler bei geplanter Datenerfassung", error);
+      this.logger.error('Fehler bei geplanter Datenerfassung', error);
     }
   }
 
@@ -58,84 +58,84 @@ export class TasksService {
    * Berechnet technische Indikatoren jede Stunde
    */
   @Cron(CronExpression.EVERY_HOUR, {
-    name: "calculateIndicators",
-    timeZone: "Europe/Berlin",
+    name: 'calculateIndicators',
+    timeZone: 'Europe/Berlin',
   })
   async handleTechnicalAnalysis() {
-    const jobName = "technical-analysis";
+    const jobName = 'technical-analysis';
     this.cronMonitoring.startJob(jobName);
 
     try {
-      this.logger.log("Starte geplante technische Analyse");
+      this.logger.log('Starte geplante technische Analyse');
       await this.analysisEngine.enrichLatestData();
 
       this.cronMonitoring.completeJob(jobName, { processed: true });
-      this.logger.log("Geplante technische Analyse abgeschlossen");
+      this.logger.log('Geplante technische Analyse abgeschlossen');
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
-      this.logger.error("Fehler bei geplanter technischer Analyse", error);
+      this.logger.error('Fehler bei geplanter technischer Analyse', error);
     }
   }
 
   /**
    * Trainiert ML-Modelle täglich um 2 Uhr nachts
    */
-  @Cron("0 2 * * *", {
-    name: "trainModels",
-    timeZone: "Europe/Berlin",
+  @Cron('0 2 * * *', {
+    name: 'trainModels',
+    timeZone: 'Europe/Berlin',
   })
   async handleModelTraining() {
-    const jobName = "ml-training";
+    const jobName = 'ml-training';
     this.cronMonitoring.startJob(jobName);
 
     try {
-      this.logger.log("Starte geplantes ML-Training");
+      this.logger.log('Starte geplantes ML-Training');
       await this.mlPrediction.trainModel();
 
       this.cronMonitoring.completeJob(jobName, { trained: true });
-      this.logger.log("Geplantes ML-Training abgeschlossen");
+      this.logger.log('Geplantes ML-Training abgeschlossen');
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
-      this.logger.error("Fehler bei geplantem ML-Training", error);
+      this.logger.error('Fehler bei geplantem ML-Training', error);
     }
   }
 
   /**
    * Validiert Vorhersagen täglich um 3 Uhr nachts
    */
-  @Cron("0 3 * * *", {
-    name: "validatePredictions",
-    timeZone: "Europe/Berlin",
+  @Cron('0 3 * * *', {
+    name: 'validatePredictions',
+    timeZone: 'Europe/Berlin',
   })
   async handlePredictionValidation() {
-    const jobName = "prediction-validation";
+    const jobName = 'prediction-validation';
     this.cronMonitoring.startJob(jobName);
 
     try {
-      this.logger.log("Starte geplante Vorhersage-Validierung");
+      this.logger.log('Starte geplante Vorhersage-Validierung');
       await this.mlPrediction.validatePredictions();
 
       this.cronMonitoring.completeJob(jobName, { validated: true });
-      this.logger.log("Geplante Vorhersage-Validierung abgeschlossen");
+      this.logger.log('Geplante Vorhersage-Validierung abgeschlossen');
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
-      this.logger.error("Fehler bei geplanter Vorhersage-Validierung", error);
+      this.logger.error('Fehler bei geplanter Vorhersage-Validierung', error);
     }
   }
 
   /**
    * Bereinigt alte Daten wöchentlich sonntags um 4 Uhr
    */
-  @Cron("0 4 * * 0", {
-    name: "cleanupOldData",
-    timeZone: "Europe/Berlin",
+  @Cron('0 4 * * 0', {
+    name: 'cleanupOldData',
+    timeZone: 'Europe/Berlin',
   })
   async handleDataCleanup() {
-    const jobName = "data-cleanup";
+    const jobName = 'data-cleanup';
     this.cronMonitoring.startJob(jobName);
 
     try {
-      this.logger.log("Starte geplante Datenbereinigung");
+      this.logger.log('Starte geplante Datenbereinigung');
 
       const retentionDays = 365; // Standardwert, kann später über ConfigService konfiguriert werden
       await this.prisma.cleanupOldData(retentionDays);
@@ -144,26 +144,26 @@ export class TasksService {
         retentionDays,
         cleaned: true,
       });
-      this.logger.log("Geplante Datenbereinigung abgeschlossen");
+      this.logger.log('Geplante Datenbereinigung abgeschlossen');
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
-      this.logger.error("Fehler bei geplanter Datenbereinigung", error);
+      this.logger.error('Fehler bei geplanter Datenbereinigung', error);
     }
   }
 
   /**
    * Erstellt täglich um 6 Uhr Vorhersagen für alle Aktien
    */
-  @Cron("0 6 * * *", {
-    name: "generateDailyPredictions",
-    timeZone: "Europe/Berlin",
+  @Cron('0 6 * * *', {
+    name: 'generateDailyPredictions',
+    timeZone: 'Europe/Berlin',
   })
   async handleDailyPredictions() {
-    const jobName = "daily-predictions";
+    const jobName = 'daily-predictions';
     this.cronMonitoring.startJob(jobName);
 
     try {
-      this.logger.log("Starte tägliche Vorhersage-Generierung");
+      this.logger.log('Starte tägliche Vorhersage-Generierung');
 
       const activeStocks = await this.prisma.stock.findMany({
         where: { isActive: true },
@@ -188,54 +188,54 @@ export class TasksService {
       );
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
-      this.logger.error("Fehler bei täglicher Vorhersage-Generierung", error);
+      this.logger.error('Fehler bei täglicher Vorhersage-Generierung', error);
     }
   }
 
   /**
    * Führt eine Integritätsprüfung der Datenbank täglich um 1 Uhr durch
    */
-  @Cron("0 1 * * *", {
-    name: "databaseIntegrityCheck",
-    timeZone: "Europe/Berlin",
+  @Cron('0 1 * * *', {
+    name: 'databaseIntegrityCheck',
+    timeZone: 'Europe/Berlin',
   })
   async handleDatabaseIntegrityCheck() {
-    const jobName = "data-integrity";
+    const jobName = 'data-integrity';
     this.cronMonitoring.startJob(jobName);
 
     try {
-      this.logger.log("Starte Datenbank-Integritätsprüfung");
+      this.logger.log('Starte Datenbank-Integritätsprüfung');
 
       const isHealthy = await this.prisma.checkIntegrity();
 
       if (isHealthy) {
         this.cronMonitoring.completeJob(jobName, { healthy: true });
-        this.logger.log("Datenbank-Integritätsprüfung erfolgreich");
+        this.logger.log('Datenbank-Integritätsprüfung erfolgreich');
       } else {
         this.cronMonitoring.completeJob(jobName, {
           healthy: false,
           warning: true,
         });
-        this.logger.warn("Datenbank-Integritätsprobleme erkannt");
+        this.logger.warn('Datenbank-Integritätsprobleme erkannt');
       }
     } catch (error) {
       this.cronMonitoring.failJob(jobName, error as Error);
-      this.logger.error("Fehler bei Datenbank-Integritätsprüfung", error);
+      this.logger.error('Fehler bei Datenbank-Integritätsprüfung', error);
     }
   }
 
   /**
    * Überwacht überfällige Cron Jobs alle 10 Minuten
    */
-  @Cron("*/10 * * * *", {
-    name: "monitorCronJobs",
-    timeZone: "Europe/Berlin",
+  @Cron('*/10 * * * *', {
+    name: 'monitorCronJobs',
+    timeZone: 'Europe/Berlin',
   })
   async handleCronJobMonitoring() {
     try {
       this.cronMonitoring.checkOverdueJobs();
     } catch (error) {
-      this.logger.error("Fehler bei Cron Job Überwachung", error);
+      this.logger.error('Fehler bei Cron Job Überwachung', error);
     }
   }
 
@@ -266,7 +266,7 @@ export class TasksService {
   private isMarketHours(): boolean {
     const now = new Date();
     const berlinTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Europe/Berlin" }),
+      now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }),
     );
 
     const hour = berlinTime.getHours();
@@ -290,7 +290,7 @@ export class TasksService {
 
       // Hole neueste Training-Logs
       const recentTraining = await this.prisma.trainingLog.findFirst({
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
       });
 
       // Hole neueste Vorhersagen
@@ -324,7 +324,7 @@ export class TasksService {
         },
       };
     } catch (error) {
-      this.logger.error("Fehler beim Abrufen des Task-Status", error);
+      this.logger.error('Fehler beim Abrufen des Task-Status', error);
       throw error;
     }
   }
@@ -334,12 +334,12 @@ export class TasksService {
    */
   async initializeDefaultStocks(): Promise<void> {
     try {
-      const defaultTickers = "AAPL,GOOGL,MSFT,AMZN,TSLA"
-        .split(",")
+      const defaultTickers = 'AAPL,GOOGL,MSFT,AMZN,TSLA'
+        .split(',')
         .map((ticker: string) => ticker.trim());
 
       this.logger.log(
-        `Initialisiere Standard-Aktien: ${defaultTickers.join(", ")}`,
+        `Initialisiere Standard-Aktien: ${defaultTickers.join(', ')}`,
       );
 
       for (const ticker of defaultTickers) {
@@ -347,7 +347,7 @@ export class TasksService {
           await this.dataIngestion.addStockToTracking(ticker);
 
           // Kurze Pause zwischen den API-Aufrufen
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         } catch (error) {
           this.logger.error(
             `Fehler bei der Initialisierung von ${ticker}`,
@@ -356,10 +356,10 @@ export class TasksService {
         }
       }
 
-      this.logger.log("Standard-Aktien-Initialisierung abgeschlossen");
+      this.logger.log('Standard-Aktien-Initialisierung abgeschlossen');
     } catch (error) {
       this.logger.error(
-        "Fehler bei der Standard-Aktien-Initialisierung",
+        'Fehler bei der Standard-Aktien-Initialisierung',
         error,
       );
       throw error;

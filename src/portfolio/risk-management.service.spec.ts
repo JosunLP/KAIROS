@@ -1,10 +1,10 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { RiskManagementService } from "./risk-management.service";
-import { PrismaService } from "../persistence/prisma.service";
-import { AnalysisEngineService } from "../analysis-engine/analysis-engine.service";
-import { Portfolio, PortfolioPosition, RiskAssessment } from "../common/types";
+import { Test, TestingModule } from '@nestjs/testing';
+import { RiskManagementService } from './risk-management.service';
+import { PrismaService } from '../persistence/prisma.service';
+import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
+import { Portfolio, PortfolioPosition, RiskAssessment } from '../common/types';
 
-describe("RiskManagementService", () => {
+describe('RiskManagementService', () => {
   let service: RiskManagementService;
   let mockPrismaService: any;
   let mockAnalysisEngineService: any;
@@ -20,19 +20,19 @@ describe("RiskManagementService", () => {
   };
 
   const mockPosition: PortfolioPosition = {
-    ticker: "AAPL",
+    ticker: 'AAPL',
     quantity: 100,
     averagePrice: 150,
     currentPrice: 155,
     unrealizedPL: 500,
     weight: 0.3,
     lastUpdated: new Date(),
-    symbol: "",
+    symbol: '',
   };
 
   const mockPortfolio: Portfolio = {
-    id: "test-portfolio-1",
-    name: "Test Portfolio",
+    id: 'test-portfolio-1',
+    name: 'Test Portfolio',
     totalValue: 50000,
     positions: [mockPosition],
     dailyReturn: 0.02,
@@ -42,11 +42,11 @@ describe("RiskManagementService", () => {
   };
 
   const mockHistoricalData = [
-    { close: 150, timestamp: new Date("2023-01-01") },
-    { close: 155, timestamp: new Date("2023-01-02") },
-    { close: 148, timestamp: new Date("2023-01-03") },
-    { close: 160, timestamp: new Date("2023-01-04") },
-    { close: 152, timestamp: new Date("2023-01-05") },
+    { close: 150, timestamp: new Date('2023-01-01') },
+    { close: 155, timestamp: new Date('2023-01-02') },
+    { close: 148, timestamp: new Date('2023-01-03') },
+    { close: 160, timestamp: new Date('2023-01-04') },
+    { close: 152, timestamp: new Date('2023-01-05') },
   ];
 
   beforeEach(async () => {
@@ -79,24 +79,24 @@ describe("RiskManagementService", () => {
     mockPrismaService = module.get(PrismaService);
   });
 
-  it("should be defined", () => {
+  it('should be defined', () => {
     expect(service).toBeDefined();
   });
-  describe("assessPortfolioRisk", () => {
+  describe('assessPortfolioRisk', () => {
     beforeEach(() => {
       mockPrismaService.historicalData.findMany.mockResolvedValue(
         mockHistoricalData,
       );
       mockPrismaService.stock.findMany.mockResolvedValue([
         {
-          ticker: "AAPL",
-          sector: "Technology",
-          industry: "Consumer Electronics",
+          ticker: 'AAPL',
+          sector: 'Technology',
+          industry: 'Consumer Electronics',
         },
       ]);
     });
 
-    it("should return valid risk assessment", async () => {
+    it('should return valid risk assessment', async () => {
       const assessment: RiskAssessment = await service.assessPortfolioRisk(
         mockPortfolio,
         mockRiskLimits,
@@ -105,7 +105,7 @@ describe("RiskManagementService", () => {
       expect(assessment).toBeDefined();
       expect(assessment.portfolioId).toBe(mockPortfolio.id);
       expect(assessment.riskLevel).toMatch(/^(LOW|MEDIUM|HIGH|CRITICAL)$/);
-      expect(typeof assessment.riskScore).toBe("number");
+      expect(typeof assessment.riskScore).toBe('number');
       expect(assessment.riskScore).toBeGreaterThanOrEqual(0);
       expect(assessment.riskScore).toBeLessThanOrEqual(100);
       expect(assessment.metrics).toBeDefined();
@@ -113,25 +113,25 @@ describe("RiskManagementService", () => {
       expect(Array.isArray(assessment.recommendations)).toBe(true);
     });
 
-    it("should calculate volatility correctly", async () => {
+    it('should calculate volatility correctly', async () => {
       const assessment: RiskAssessment = await service.assessPortfolioRisk(
         mockPortfolio,
         mockRiskLimits,
       );
 
       expect(assessment.metrics.volatility).toBeDefined();
-      expect(typeof assessment.metrics.volatility).toBe("number");
+      expect(typeof assessment.metrics.volatility).toBe('number');
       expect(assessment.metrics.volatility).toBeGreaterThanOrEqual(0);
     });
 
-    it("should identify concentration risk", async () => {
+    it('should identify concentration risk', async () => {
       const highConcentrationPortfolio = {
         ...mockPortfolio,
         totalValue: 50000,
         positions: [
           {
             ...mockPosition,
-            ticker: "AAPL",
+            ticker: 'AAPL',
             quantity: 100,
             averagePrice: 500,
             currentPrice: 500,
@@ -146,11 +146,11 @@ describe("RiskManagementService", () => {
 
       expect(assessment.alerts.length).toBeGreaterThan(0);
       expect(
-        assessment.alerts.some((alert: any) => alert.type === "POSITION_SIZE"),
+        assessment.alerts.some((alert: any) => alert.type === 'POSITION_SIZE'),
       ).toBe(true);
     });
 
-    it("should handle empty portfolio", async () => {
+    it('should handle empty portfolio', async () => {
       const emptyPortfolio = {
         ...mockPortfolio,
         positions: [],
@@ -167,7 +167,7 @@ describe("RiskManagementService", () => {
       expect(assessment.riskScore).toBeGreaterThanOrEqual(0); // Risk score should be a valid number
     });
 
-    it("should generate appropriate recommendations", async () => {
+    it('should generate appropriate recommendations', async () => {
       const assessment: RiskAssessment = await service.assessPortfolioRisk(
         mockPortfolio,
         mockRiskLimits,
@@ -178,42 +178,42 @@ describe("RiskManagementService", () => {
 
       if (assessment.recommendations.length > 0) {
         const recommendation = assessment.recommendations[0];
-        expect(typeof recommendation).toBe("string");
+        expect(typeof recommendation).toBe('string');
       }
     });
   });
 
-  describe("calculateSectorExposure", () => {
+  describe('calculateSectorExposure', () => {
     beforeEach(() => {
       mockPrismaService.stock.findMany.mockResolvedValue([
-        { ticker: "AAPL", sector: "Technology" },
-        { ticker: "MSFT", sector: "Technology" },
-        { ticker: "JPM", sector: "Financials" },
+        { ticker: 'AAPL', sector: 'Technology' },
+        { ticker: 'MSFT', sector: 'Technology' },
+        { ticker: 'JPM', sector: 'Financials' },
       ]);
     });
 
-    it("should calculate sector exposure correctly", async () => {
+    it('should calculate sector exposure correctly', async () => {
       const multiSectorPortfolio = {
         ...mockPortfolio,
         totalValue: 100000, // Set a total value
         positions: [
           {
             ...mockPosition,
-            ticker: "AAPL",
+            ticker: 'AAPL',
             quantity: 100,
             averagePrice: 150,
             currentPrice: 150,
           }, // 15000 value = 15%
           {
             ...mockPosition,
-            ticker: "MSFT",
+            ticker: 'MSFT',
             quantity: 200,
             averagePrice: 300,
             currentPrice: 300,
           }, // 60000 value = 60%
           {
             ...mockPosition,
-            ticker: "JPM",
+            ticker: 'JPM',
             quantity: 125,
             averagePrice: 200,
             currentPrice: 200,
@@ -230,27 +230,27 @@ describe("RiskManagementService", () => {
 
       // Find Technology sector (AAPL + MSFT = 15% + 60% = 75%)
       const techSector = sectorExposure.find(
-        (s: any) => s.sector === "Technology",
+        (s: any) => s.sector === 'Technology',
       );
       expect(techSector).toBeDefined();
       expect(techSector!.percentage).toBeCloseTo(75, 1); // Should be ~75% (15% + 60%)
 
       // Find Banking sector (JPM = 25%)
       const bankSector = sectorExposure.find(
-        (s: any) => s.sector === "Banking",
+        (s: any) => s.sector === 'Banking',
       );
       expect(bankSector).toBeDefined();
       expect(bankSector!.percentage).toBeCloseTo(25, 1); // Should be ~25%
     });
 
-    it("should handle unknown sectors", async () => {
+    it('should handle unknown sectors', async () => {
       const unknownSectorPortfolio = {
         ...mockPortfolio,
         totalValue: 50000,
         positions: [
           {
             ...mockPosition,
-            ticker: "UNKNOWN",
+            ticker: 'UNKNOWN',
             quantity: 100,
             averagePrice: 500,
             currentPrice: 500,
@@ -263,17 +263,17 @@ describe("RiskManagementService", () => {
       );
 
       expect(sectorExposure).toBeInstanceOf(Array);
-      const otherSector = sectorExposure.find((s: any) => s.sector === "Other");
+      const otherSector = sectorExposure.find((s: any) => s.sector === 'Other');
       expect(otherSector).toBeDefined();
       expect(otherSector!.percentage).toBeCloseTo(100, 1); // Should be 100% since it's the only position
     });
   });
 
-  describe("error handling", () => {
-    it("should handle database errors gracefully", async () => {
+  describe('error handling', () => {
+    it('should handle database errors gracefully', async () => {
       // Mock zu einem Fehler, aber der Service sollte die Fehler abfangen und trotzdem ein Ergebnis liefern
       mockPrismaService.historicalData.findMany.mockRejectedValue(
-        new Error("Database error"),
+        new Error('Database error'),
       );
 
       const assessment = await service.assessPortfolioRisk(
@@ -287,7 +287,7 @@ describe("RiskManagementService", () => {
       expect(assessment.portfolioId).toBe(mockPortfolio.id);
     });
 
-    it("should handle missing historical data", async () => {
+    it('should handle missing historical data', async () => {
       mockPrismaService.historicalData.findMany.mockResolvedValue([]);
       mockPrismaService.stock.findMany.mockResolvedValue([]);
 

@@ -1,12 +1,16 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { PrismaService } from "../persistence/prisma.service";
-import { DataIngestionService } from "../data-ingestion/data-ingestion.service";
-import { MLClientService, TrainingData as MLTrainingData, PredictionRequest } from "./ml-client.service";
-import { PredictionResult, TrainingStatus } from "../common/types";
-import * as tf from "@tensorflow/tfjs";
-import * as fs from "fs";
-import * as path from "path";
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../persistence/prisma.service';
+import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
+import {
+  MLClientService,
+  TrainingData as MLTrainingData,
+  PredictionRequest,
+} from './ml-client.service';
+import { PredictionResult, TrainingStatus } from '../common/types';
+import * as tf from '@tensorflow/tfjs';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface TrainingData {
   features: number[][];
@@ -48,7 +52,7 @@ export interface ExtendedTrainingStatus extends TrainingStatus {
 @Injectable()
 export class MlPredictionService {
   private readonly logger = new Logger(MlPredictionService.name);
-  private readonly modelDir = path.join(process.cwd(), "models");
+  private readonly modelDir = path.join(process.cwd(), 'models');
   private models: Map<string, tf.LayersModel> = new Map();
   private trainingStatus: ExtendedTrainingStatus = {
     isTraining: false,
@@ -57,7 +61,7 @@ export class MlPredictionService {
     loss: 0,
     accuracy: 0,
     estimatedTimeRemaining: 0,
-    status: "IDLE",
+    status: 'IDLE',
   };
   private trainingAbortController?: AbortController;
 
@@ -100,11 +104,11 @@ export class MlPredictionService {
   // Training configuration
   private readonly trainingConfig = {
     epochs: parseInt(
-      this.configService.get<string>("ML_TRAINING_EPOCHS", "100"),
+      this.configService.get<string>('ML_TRAINING_EPOCHS', '100'),
     ),
-    batchSize: parseInt(this.configService.get<string>("ML_BATCH_SIZE", "32")),
+    batchSize: parseInt(this.configService.get<string>('ML_BATCH_SIZE', '32')),
     validationSplit: parseFloat(
-      this.configService.get<string>("ML_VALIDATION_SPLIT", "0.2"),
+      this.configService.get<string>('ML_VALIDATION_SPLIT', '0.2'),
     ),
     earlyStoppingPatience: 10,
     minDelta: 0.001,
@@ -128,10 +132,10 @@ export class MlPredictionService {
   async checkModelExists(): Promise<boolean> {
     try {
       const modelPath = this.getModelPath();
-      const fs = await import("fs");
+      const fs = await import('fs');
       return fs.existsSync(modelPath);
     } catch (error) {
-      this.logger.error("Fehler beim Prüfen des Modells:", error);
+      this.logger.error('Fehler beim Prüfen des Modells:', error);
       return false;
     }
   }
@@ -141,7 +145,7 @@ export class MlPredictionService {
    */
   async trainModel(): Promise<boolean> {
     try {
-      this.logger.log("🤖 Starte ML-Modell-Training...");
+      this.logger.log('🤖 Starte ML-Modell-Training...');
 
       // SCHRITT 1: Frische Daten von APIs holen
       await this.fetchFreshDataForTraining();
@@ -153,7 +157,7 @@ export class MlPredictionService {
 
       if (trainingData.length < 100) {
         this.logger.warn(
-          "Nicht genügend Daten für Training (mindestens 100 benötigt)",
+          'Nicht genügend Daten für Training (mindestens 100 benötigt)',
         );
         return false;
       }
@@ -164,10 +168,10 @@ export class MlPredictionService {
       // Modell speichern
       await this.saveModel(model);
 
-      this.logger.log("✅ ML-Modell erfolgreich trainiert und gespeichert");
+      this.logger.log('✅ ML-Modell erfolgreich trainiert und gespeichert');
       return true;
     } catch (error) {
-      this.logger.error("Fehler beim Training:", error);
+      this.logger.error('Fehler beim Training:', error);
       return false;
     }
   }
@@ -177,7 +181,7 @@ export class MlPredictionService {
    */
   async startTraining(): Promise<boolean> {
     if (this.trainingStatus.isTraining) {
-      this.logger.warn("Training läuft bereits");
+      this.logger.warn('Training läuft bereits');
       return false;
     }
 
@@ -189,7 +193,7 @@ export class MlPredictionService {
         loss: 0,
         accuracy: 0,
         estimatedTimeRemaining: 0,
-        status: "TRAINING",
+        status: 'TRAINING',
         startTime: new Date(),
         currentEpoch: 0,
         totalEpochs: 100,
@@ -198,7 +202,7 @@ export class MlPredictionService {
 
       this.trainingAbortController = new AbortController();
 
-      this.logger.log("🤖 Starte erweiteres ML-Modell-Training...");
+      this.logger.log('🤖 Starte erweiteres ML-Modell-Training...');
 
       // SCHRITT 1: Frische Daten von APIs holen
       await this.fetchFreshDataForTraining();
@@ -210,7 +214,7 @@ export class MlPredictionService {
 
       if (trainingData.length < 100) {
         this.logger.warn(
-          "Nicht genügend Daten für Training (mindestens 100 benötigt)",
+          'Nicht genügend Daten für Training (mindestens 100 benötigt)',
         );
         this.trainingStatus.isTraining = false;
         return false;
@@ -222,15 +226,15 @@ export class MlPredictionService {
       if (!this.trainingStatus.shouldStop && model) {
         // Modell speichern
         await this.saveModel(model);
-        this.logger.log("✅ ML-Modell erfolgreich trainiert und gespeichert");
+        this.logger.log('✅ ML-Modell erfolgreich trainiert und gespeichert');
       } else {
-        this.logger.log("⚠️ Training wurde abgebrochen");
+        this.logger.log('⚠️ Training wurde abgebrochen');
       }
 
       this.trainingStatus.isTraining = false;
       return !this.trainingStatus.shouldStop;
     } catch (error) {
-      this.logger.error("Fehler beim Training:", error);
+      this.logger.error('Fehler beim Training:', error);
       this.trainingStatus.isTraining = false;
       return false;
     }
@@ -241,11 +245,11 @@ export class MlPredictionService {
    */
   async stopTraining(): Promise<boolean> {
     if (!this.trainingStatus.isTraining) {
-      this.logger.warn("Kein Training läuft derzeit");
+      this.logger.warn('Kein Training läuft derzeit');
       return false;
     }
 
-    this.logger.log("🛑 Beende Training sicher...");
+    this.logger.log('🛑 Beende Training sicher...');
     this.trainingStatus.shouldStop = true;
 
     if (this.trainingAbortController) {
@@ -254,10 +258,10 @@ export class MlPredictionService {
 
     // Warte bis Training beendet ist
     while (this.trainingStatus.isTraining) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    this.logger.log("✅ Training sicher beendet");
+    this.logger.log('✅ Training sicher beendet');
     return true;
   }
 
@@ -281,7 +285,7 @@ export class MlPredictionService {
       // Modell laden
       const model = await this.loadModel();
       if (!model) {
-        this.logger.warn("Kein trainiertes Modell verfügbar");
+        this.logger.warn('Kein trainiertes Modell verfügbar');
         return null;
       }
 
@@ -312,7 +316,7 @@ export class MlPredictionService {
    * Gibt den Pfad für das Modell zurück
    */
   private getModelPath(): string {
-    return "./models/kairos-model";
+    return './models/kairos-model';
   }
 
   /**
@@ -329,7 +333,7 @@ export class MlPredictionService {
 
       return await tf.loadLayersModel(`file://${modelPath}/model.json`);
     } catch (error) {
-      this.logger.error("Fehler beim Laden des Modells:", error);
+      this.logger.error('Fehler beim Laden des Modells:', error);
       return null;
     }
   }
@@ -342,15 +346,15 @@ export class MlPredictionService {
       const modelPath = this.getModelPath();
 
       // Verzeichnis erstellen falls nicht vorhanden
-      const fs = await import("fs");
-      if (!fs.existsSync("./models")) {
-        fs.mkdirSync("./models", { recursive: true });
+      const fs = await import('fs');
+      if (!fs.existsSync('./models')) {
+        fs.mkdirSync('./models', { recursive: true });
       }
 
       await model.save(`file://${modelPath}`);
       this.logger.log(`Modell gespeichert unter: ${modelPath}`);
     } catch (error) {
-      this.logger.error("Fehler beim Speichern des Modells:", error);
+      this.logger.error('Fehler beim Speichern des Modells:', error);
       throw error;
     }
   }
@@ -360,7 +364,7 @@ export class MlPredictionService {
    */
   private async prepareTrainingData(): Promise<any[]> {
     try {
-      this.logger.log("📊 Bereite Trainingsdaten vor...");
+      this.logger.log('📊 Bereite Trainingsdaten vor...');
 
       const data = await this.prisma.historicalData.findMany({
         where: {
@@ -371,13 +375,13 @@ export class MlPredictionService {
             { macd: { not: null } },
           ],
         },
-        orderBy: { timestamp: "asc" },
+        orderBy: { timestamp: 'asc' },
         include: { stock: true },
       });
 
       if (data.length === 0) {
         throw new Error(
-          "Keine Daten mit vollständigen technischen Indikatoren gefunden",
+          'Keine Daten mit vollständigen technischen Indikatoren gefunden',
         );
       }
 
@@ -393,7 +397,7 @@ export class MlPredictionService {
       );
       return transformedData;
     } catch (error) {
-      this.logger.error("Fehler beim Vorbereiten der Trainingsdaten:", error);
+      this.logger.error('Fehler beim Vorbereiten der Trainingsdaten:', error);
       throw error;
     }
   }
@@ -410,7 +414,7 @@ export class MlPredictionService {
       const target = data[i];
 
       // Features extrahieren
-      const features = sequence.map((item) => [
+      const features = sequence.map(item => [
         item.close,
         item.volume,
         item.sma20 || 0,
@@ -474,20 +478,20 @@ export class MlPredictionService {
         // Dense-Schichten mit Regularisierung
         tf.layers.dense({
           units: 32,
-          activation: "relu",
+          activation: 'relu',
           kernelRegularizer: tf.regularizers.l2({ l2: 0.001 }),
         }),
         tf.layers.dropout({ rate: 0.3 }),
 
         tf.layers.dense({
           units: 16,
-          activation: "relu",
+          activation: 'relu',
           kernelRegularizer: tf.regularizers.l2({ l2: 0.001 }),
         }),
         tf.layers.dropout({ rate: 0.2 }),
 
         // Output-Schicht
-        tf.layers.dense({ units: 1, activation: "sigmoid" }),
+        tf.layers.dense({ units: 1, activation: 'sigmoid' }),
       ],
     });
 
@@ -511,13 +515,13 @@ export class MlPredictionService {
       // Modell kompilieren mit angepassten Hyperparametern
       model.compile({
         optimizer: tf.train.adam(0.0005), // Niedrigere Learning Rate
-        loss: "binaryCrossentropy",
-        metrics: ["accuracy"],
+        loss: 'binaryCrossentropy',
+        metrics: ['accuracy'],
       });
 
       // Daten für Training vorbereiten
-      const inputs = trainingData.map((item) => item.input);
-      const outputs = trainingData.map((item) => item.output);
+      const inputs = trainingData.map(item => item.input);
+      const outputs = trainingData.map(item => item.output);
 
       const xs = tf.tensor3d(inputs);
       const ys = tf.tensor2d(outputs, [outputs.length, 1]);
@@ -549,7 +553,7 @@ export class MlPredictionService {
 
       return model;
     } catch (error) {
-      this.logger.error("Fehler beim Erstellen/Trainieren des Modells:", error);
+      this.logger.error('Fehler beim Erstellen/Trainieren des Modells:', error);
       throw error;
     }
   }
@@ -577,21 +581,21 @@ export class MlPredictionService {
           returnSequences: false,
         }),
         tf.layers.dropout({ rate: 0.2 }),
-        tf.layers.dense({ units: 25, activation: "relu" }),
-        tf.layers.dense({ units: 1, activation: "sigmoid" }),
+        tf.layers.dense({ units: 25, activation: 'relu' }),
+        tf.layers.dense({ units: 1, activation: 'sigmoid' }),
       ],
     });
 
     // Modell kompilieren
     model.compile({
       optimizer: tf.train.adam(0.001),
-      loss: "binaryCrossentropy",
-      metrics: ["accuracy"],
+      loss: 'binaryCrossentropy',
+      metrics: ['accuracy'],
     });
 
     // Daten für Training vorbereiten
-    const inputs = trainingData.map((item) => item.input);
-    const outputs = trainingData.map((item) => item.output);
+    const inputs = trainingData.map(item => item.input);
+    const outputs = trainingData.map(item => item.output);
 
     const xs = tf.tensor3d(inputs);
     const ys = tf.tensor2d(outputs, [outputs.length, 1]);
@@ -616,12 +620,12 @@ export class MlPredictionService {
 
             // Prüfe ob Training abgebrochen werden soll
             if (this.trainingStatus.shouldStop) {
-              this.logger.log("🛑 Training wird abgebrochen...");
-              throw new Error("Training aborted by user");
+              this.logger.log('🛑 Training wird abgebrochen...');
+              throw new Error('Training aborted by user');
             }
 
             // Kurze Pause um anderen Operationen Zeit zu geben
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            await new Promise(resolve => setTimeout(resolve, 10));
           },
         },
       });
@@ -638,7 +642,7 @@ export class MlPredictionService {
 
       if (
         error instanceof Error &&
-        error.message === "Training aborted by user"
+        error.message === 'Training aborted by user'
       ) {
         return null;
       }
@@ -651,7 +655,7 @@ export class MlPredictionService {
    */
   private async fetchFreshDataForTraining(): Promise<void> {
     try {
-      this.logger.log("📡 Hole frische Daten für Training...");
+      this.logger.log('📡 Hole frische Daten für Training...');
 
       // Prüfe ob überwachte Aktien vorhanden sind
       const trackedStocks = await this.prisma.stock.findMany({
@@ -660,11 +664,11 @@ export class MlPredictionService {
 
       if (trackedStocks.length === 0) {
         this.logger.log(
-          "⚠️ Keine überwachten Aktien gefunden. Füge Beispiel-Aktien hinzu...",
+          '⚠️ Keine überwachten Aktien gefunden. Füge Beispiel-Aktien hinzu...',
         );
 
         // Füge einige Standard-Aktien für Demo-Zwecke hinzu
-        const defaultStocks = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN"];
+        const defaultStocks = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN'];
 
         for (const ticker of defaultStocks) {
           if (this.trainingStatus.shouldStop) break;
@@ -674,7 +678,7 @@ export class MlPredictionService {
             this.logger.log(`✅ ${ticker} hinzugefügt`);
 
             // Kurze Pause zwischen API-Aufrufen
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 1000));
           } catch (error) {
             this.logger.warn(
               `Fehler beim Hinzufügen von ${ticker}:`,
@@ -691,9 +695,9 @@ export class MlPredictionService {
         await this.dataIngestionService.fetchLatestDataForAllTrackedStocks();
       }
 
-      this.logger.log("✅ Frische Daten erfolgreich abgerufen");
+      this.logger.log('✅ Frische Daten erfolgreich abgerufen');
     } catch (error) {
-      this.logger.error("Fehler beim Abrufen frischer Daten:", error);
+      this.logger.error('Fehler beim Abrufen frischer Daten:', error);
       throw error;
     }
   }
@@ -713,7 +717,7 @@ export class MlPredictionService {
             { macd: { not: null } },
           ],
         },
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
         take: 30, // Letzte 30 Datenpunkte
       });
 
@@ -724,7 +728,7 @@ export class MlPredictionService {
       // Reihenfolge umkehren (älteste zuerst)
       data.reverse();
 
-      return data.map((item) => [
+      return data.map(item => [
         item.close,
         Number(item.volume),
         item.sma20 || 0,
@@ -733,7 +737,7 @@ export class MlPredictionService {
         item.macd || 0,
       ]);
     } catch (error) {
-      this.logger.error("Fehler beim Vorbereiten der Eingabedaten:", error);
+      this.logger.error('Fehler beim Vorbereiten der Eingabedaten:', error);
       return null;
     }
   }
@@ -761,11 +765,11 @@ export class MlPredictionService {
         prediction: direction,
         confidence,
         timestamp: new Date(),
-        model: "lstm-v1",
+        model: 'lstm-v1',
         features: {},
       };
     } catch (error) {
-      this.logger.error("Fehler bei der Prognose-Erstellung:", error);
+      this.logger.error('Fehler bei der Prognose-Erstellung:', error);
       throw error;
     }
   }
@@ -804,7 +808,7 @@ export class MlPredictionService {
    */
   private validateTrainingData(data: any[]): boolean {
     if (!Array.isArray(data) || data.length === 0) {
-      throw new Error("Trainingsdaten sind leer oder ungültig");
+      throw new Error('Trainingsdaten sind leer oder ungültig');
     }
 
     // Prüfe auf konsistente Datenstruktur
@@ -815,7 +819,7 @@ export class MlPredictionService {
         !Array.isArray(item.input) ||
         item.output === undefined
       ) {
-        throw new Error("Inkonsistente Datenstruktur in Trainingsdaten");
+        throw new Error('Inkonsistente Datenstruktur in Trainingsdaten');
       }
     }
 
@@ -841,7 +845,7 @@ export class MlPredictionService {
    * Validiert gespeicherte Prognosen gegen tatsächliche Marktentwicklung
    */
   async validatePredictions(): Promise<void> {
-    this.logger.log("🔍 Beginne Validierung der Prognosen...");
+    this.logger.log('🔍 Beginne Validierung der Prognosen...');
 
     try {
       const cutoffDate = new Date();
@@ -858,7 +862,7 @@ export class MlPredictionService {
       });
 
       if (predictions.length === 0) {
-        this.logger.log("Keine Prognosen zur Validierung gefunden");
+        this.logger.log('Keine Prognosen zur Validierung gefunden');
         return;
       }
 
@@ -880,7 +884,7 @@ export class MlPredictionService {
                 ), // +1 Tag
               },
             },
-            orderBy: { timestamp: "asc" },
+            orderBy: { timestamp: 'asc' },
           });
 
           if (actualData) {
@@ -888,13 +892,13 @@ export class MlPredictionService {
             const predictedDirection =
               prediction.predictedDirection ||
               (prediction.confidence && prediction.confidence > 0.5
-                ? "UP"
-                : "DOWN");
+                ? 'UP'
+                : 'DOWN');
 
-            let actualDirection = "NEUTRAL";
+            let actualDirection = 'NEUTRAL';
             if (prediction.predictedPrice) {
               actualDirection =
-                actualData.close > prediction.predictedPrice ? "UP" : "DOWN";
+                actualData.close > prediction.predictedPrice ? 'UP' : 'DOWN';
             }
 
             // Aktualisiere die Prognose mit tatsächlichen Daten
@@ -938,7 +942,7 @@ export class MlPredictionService {
         correctPredictions,
       );
     } catch (error) {
-      this.logger.error("Fehler bei der Prognose-Validierung:", error);
+      this.logger.error('Fehler bei der Prognose-Validierung:', error);
       throw error;
     }
   }
@@ -954,8 +958,8 @@ export class MlPredictionService {
     try {
       await this.prisma.trainingLog.create({
         data: {
-          modelVersion: "validation-metrics",
-          status: "COMPLETED",
+          modelVersion: 'validation-metrics',
+          status: 'COMPLETED',
           accuracy: accuracy / 100,
           trainingSize: totalValidated,
           features: JSON.stringify({
@@ -967,7 +971,7 @@ export class MlPredictionService {
       });
     } catch (error) {
       this.logger.error(
-        "Fehler beim Speichern der Validierungs-Metriken:",
+        'Fehler beim Speichern der Validierungs-Metriken:',
         error,
       );
     }
@@ -994,7 +998,7 @@ export class MlPredictionService {
 
       // Lade Trainingsdaten
       const trainingData = await this.prepareTrainingDataForMLService(ticker);
-      
+
       const mlTrainingData: MLTrainingData = {
         features: trainingData.features,
         target: trainingData.labels,
@@ -1003,12 +1007,16 @@ export class MlPredictionService {
 
       // Trainiere Modell
       const result = await this.mlClientService.trainModel(mlTrainingData);
-      
-      this.logger.log(`Modell für ${ticker} erfolgreich trainiert: ${result.message}`);
-      return result;
 
+      this.logger.log(
+        `Modell für ${ticker} erfolgreich trainiert: ${result.message}`,
+      );
+      return result;
     } catch (error) {
-      this.logger.error(`Fehler beim Training mit ML-Service für ${ticker}:`, error);
+      this.logger.error(
+        `Fehler beim Training mit ML-Service für ${ticker}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -1025,7 +1033,8 @@ export class MlPredictionService {
       this.logger.log(`Vorhersage für ${ticker} mit ML-Service...`);
 
       // Bereite Features vor falls nicht gegeben
-      const predictionFeatures = features || await this.prepareFeaturesForPrediction(ticker);
+      const predictionFeatures =
+        features || (await this.prepareFeaturesForPrediction(ticker));
 
       const predictionRequest: PredictionRequest = {
         features: predictionFeatures,
@@ -1034,7 +1043,7 @@ export class MlPredictionService {
 
       // Mache Vorhersage
       const response = await this.mlClientService.predict(predictionRequest);
-      
+
       // Konvertiere zu PredictionResult Format
       const predictionResult: PredictionResult = {
         symbol: ticker,
@@ -1045,11 +1054,15 @@ export class MlPredictionService {
         features: {}, // Leeres Objekt für Features
       };
 
-      this.logger.log(`Vorhersage für ${ticker} erfolgreich: ${response.predictions[0]}`);
+      this.logger.log(
+        `Vorhersage für ${ticker} erfolgreich: ${response.predictions[0]}`,
+      );
       return predictionResult;
-
     } catch (error) {
-      this.logger.error(`Fehler bei Vorhersage mit ML-Service für ${ticker}:`, error);
+      this.logger.error(
+        `Fehler bei Vorhersage mit ML-Service für ${ticker}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -1071,7 +1084,9 @@ export class MlPredictionService {
   /**
    * Bereitet Trainingsdaten für den ML-Service vor
    */
-  private async prepareTrainingDataForMLService(ticker: string): Promise<TrainingData> {
+  private async prepareTrainingDataForMLService(
+    ticker: string,
+  ): Promise<TrainingData> {
     // Verwende die Prisma-Datenbank direkt
     const data = await this.prisma.historicalData.findMany({
       where: {
@@ -1084,29 +1099,40 @@ export class MlPredictionService {
       },
       take: 200,
     });
-    
+
     if (data.length < 50) {
-      throw new Error(`Nicht genügend Daten für ${ticker}: ${data.length} Datenpunkte`);
+      throw new Error(
+        `Nicht genügend Daten für ${ticker}: ${data.length} Datenpunkte`,
+      );
     }
 
     const features: number[][] = [];
     const labels: number[] = [];
 
     // Erstelle Features und Labels
-    for (let i = this.defaultArchitecture.sequenceLength; i < data.length; i++) {
-      const sequence = data.slice(i - this.defaultArchitecture.sequenceLength, i);
-      
+    for (
+      let i = this.defaultArchitecture.sequenceLength;
+      i < data.length;
+      i++
+    ) {
+      const sequence = data.slice(
+        i - this.defaultArchitecture.sequenceLength,
+        i,
+      );
+
       // Features: [close, volume, sma20, ema50, rsi14, macd, bollUpper, bollLower]
-      const featureRow = sequence.map((item: any) => [
-        item.close,
-        Number(item.volume),
-        item.sma20 || item.close,
-        item.ema50 || item.close,
-        item.rsi14 || 50,
-        item.macd || 0,
-        item.bollUpper || item.close,
-        item.bollLower || item.close,
-      ]).flat();
+      const featureRow = sequence
+        .map((item: any) => [
+          item.close,
+          Number(item.volume),
+          item.sma20 || item.close,
+          item.ema50 || item.close,
+          item.rsi14 || 50,
+          item.macd || 0,
+          item.bollUpper || item.close,
+          item.bollLower || item.close,
+        ])
+        .flat();
 
       features.push(featureRow);
       labels.push(data[i].close); // Nächster Schlusskurs als Ziel
@@ -1118,7 +1144,9 @@ export class MlPredictionService {
   /**
    * Bereitet Features für eine einzelne Vorhersage vor
    */
-  private async prepareFeaturesForPrediction(ticker: string): Promise<number[]> {
+  private async prepareFeaturesForPrediction(
+    ticker: string,
+  ): Promise<number[]> {
     const data = await this.prisma.historicalData.findMany({
       where: {
         stock: {
@@ -1130,25 +1158,29 @@ export class MlPredictionService {
       },
       take: this.defaultArchitecture.sequenceLength + 10,
     });
-    
+
     if (data.length < this.defaultArchitecture.sequenceLength) {
-      throw new Error(`Nicht genügend Daten für Vorhersage: ${data.length} Datenpunkte`);
+      throw new Error(
+        `Nicht genügend Daten für Vorhersage: ${data.length} Datenpunkte`,
+      );
     }
 
     // Nimm die letzten N Datenpunkte
     const sequence = data.slice(-this.defaultArchitecture.sequenceLength);
-    
+
     // Erstelle Feature-Array
-    const features = sequence.map((item: any) => [
-      item.close,
-      Number(item.volume),
-      item.sma20 || item.close,
-      item.ema50 || item.close,
-      item.rsi14 || 50,
-      item.macd || 0,
-      item.bollUpper || item.close,
-      item.bollLower || item.close,
-    ]).flat();
+    const features = sequence
+      .map((item: any) => [
+        item.close,
+        Number(item.volume),
+        item.sma20 || item.close,
+        item.ema50 || item.close,
+        item.rsi14 || 50,
+        item.macd || 0,
+        item.bollUpper || item.close,
+        item.bollLower || item.close,
+      ])
+      .flat();
 
     return features;
   }
@@ -1190,13 +1222,14 @@ export class MlPredictionService {
       ]);
 
       const result = {
-        localResult: localResult.status === 'fulfilled' ? localResult.value : null,
-        mlServiceResult: mlServiceResult.status === 'fulfilled' ? mlServiceResult.value : null,
+        localResult:
+          localResult.status === 'fulfilled' ? localResult.value : null,
+        mlServiceResult:
+          mlServiceResult.status === 'fulfilled' ? mlServiceResult.value : null,
       };
 
       this.logger.log(`Hybrid-Training für ${ticker} abgeschlossen`);
       return result;
-
     } catch (error) {
       this.logger.error(`Fehler beim Hybrid-Training für ${ticker}:`, error);
       throw error;

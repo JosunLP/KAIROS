@@ -1,10 +1,9 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { AnalysisEngineService } from "./analysis-engine.service";
-import { PrismaService } from "../persistence/prisma.service";
+import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../persistence/prisma.service';
+import { AnalysisEngineService } from './analysis-engine.service';
 
-describe("AnalysisEngineService", () => {
+describe('AnalysisEngineService', () => {
   let service: AnalysisEngineService;
-  let prismaService: jest.Mocked<PrismaService>;
 
   beforeEach(async () => {
     const mockPrismaService = {
@@ -27,15 +26,14 @@ describe("AnalysisEngineService", () => {
     }).compile();
 
     service = module.get<AnalysisEngineService>(AnalysisEngineService);
-    prismaService = module.get(PrismaService);
   });
 
-  it("should be defined", () => {
+  it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe("calculateSMA", () => {
-    it("should calculate simple moving average correctly", () => {
+  describe('calculateSMA', () => {
+    it('should calculate simple moving average correctly', () => {
       const prices = [10, 12, 14, 16, 18];
       const period = 3;
       const result = service.calculateSMA(prices, period);
@@ -44,8 +42,8 @@ describe("AnalysisEngineService", () => {
     });
   });
 
-  describe("calculateEMA", () => {
-    it("should calculate exponential moving average correctly", () => {
+  describe('calculateEMA', () => {
+    it('should calculate exponential moving average correctly', () => {
       const prices = [10, 12, 14, 16, 18];
       const period = 3;
       const result = service.calculateEMA(prices, period);
@@ -55,8 +53,8 @@ describe("AnalysisEngineService", () => {
     });
   });
 
-  describe("calculateRSI", () => {
-    it("should calculate RSI correctly", () => {
+  describe('calculateRSI', () => {
+    it('should calculate RSI correctly', () => {
       const prices = [
         44, 44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.85, 46.08, 45.89,
         46.03, 46.83, 46.69, 46.45, 46.59,
@@ -68,8 +66,8 @@ describe("AnalysisEngineService", () => {
       expect(result[0]).toBeLessThan(100);
     });
   });
-  describe("calculateMACD", () => {
-    it("should calculate MACD correctly", () => {
+  describe('calculateMACD', () => {
+    it('should calculate MACD correctly', () => {
       const prices = new Array(50)
         .fill(0)
         .map((_, i) => 100 + Math.sin(i * 0.1) * 10);
@@ -78,14 +76,14 @@ describe("AnalysisEngineService", () => {
       expect(result).toBeInstanceOf(Array);
       // TI library returns array of objects with MACD, signal, histogram properties
       if (result.length > 0) {
-        expect(result[0]).toHaveProperty("MACD");
-        expect(result[0]).toHaveProperty("signal");
-        expect(result[0]).toHaveProperty("histogram");
+        expect(result[0]).toHaveProperty('MACD');
+        expect(result[0]).toHaveProperty('signal');
+        expect(result[0]).toHaveProperty('histogram');
       }
     });
   });
-  describe("calculateBollingerBands", () => {
-    it("should calculate Bollinger Bands correctly", () => {
+  describe('calculateBollingerBands', () => {
+    it('should calculate Bollinger Bands correctly', () => {
       const prices = [
         20, 22, 24, 23, 25, 24, 26, 25, 27, 26, 28, 27, 29, 28, 30,
       ];
@@ -94,9 +92,9 @@ describe("AnalysisEngineService", () => {
       expect(result).toBeInstanceOf(Array);
       // TI library returns array of objects with upper, middle, lower properties
       if (result.length > 0) {
-        expect(result[0]).toHaveProperty("upper");
-        expect(result[0]).toHaveProperty("middle");
-        expect(result[0]).toHaveProperty("lower");
+        expect(result[0]).toHaveProperty('upper');
+        expect(result[0]).toHaveProperty('middle');
+        expect(result[0]).toHaveProperty('lower');
       }
     });
   });

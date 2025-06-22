@@ -1,9 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { DataProvider, MarketDataPoint } from "../data-ingestion.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { DataProvider, MarketDataPoint } from '../data-ingestion.service';
 
 @Injectable()
 export class MockProvider implements DataProvider {
-  public readonly name = "Mock Provider (Demo)";
+  public readonly name = 'Mock Provider (Demo)';
   private readonly logger = new Logger(MockProvider.name);
 
   isConfigured(): boolean {
@@ -61,17 +61,17 @@ export class MockProvider implements DataProvider {
     query: string,
   ): Promise<Array<{ symbol: string; name: string }>> {
     const mockSymbols = [
-      { symbol: "AAPL", name: "Apple Inc." },
-      { symbol: "MSFT", name: "Microsoft Corporation" },
-      { symbol: "GOOGL", name: "Alphabet Inc." },
-      { symbol: "AMZN", name: "Amazon.com Inc." },
-      { symbol: "TSLA", name: "Tesla Inc." },
-      { symbol: "META", name: "Meta Platforms Inc." },
-      { symbol: "NVDA", name: "NVIDIA Corporation" },
+      { symbol: 'AAPL', name: 'Apple Inc.' },
+      { symbol: 'MSFT', name: 'Microsoft Corporation' },
+      { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+      { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+      { symbol: 'TSLA', name: 'Tesla Inc.' },
+      { symbol: 'META', name: 'Meta Platforms Inc.' },
+      { symbol: 'NVDA', name: 'NVIDIA Corporation' },
     ];
 
     return mockSymbols.filter(
-      (s) =>
+      s =>
         s.symbol.toLowerCase().includes(query.toLowerCase()) ||
         s.name.toLowerCase().includes(query.toLowerCase()),
     );
@@ -85,47 +85,47 @@ export class MockProvider implements DataProvider {
       { name: string; sector: string; industry: string }
     > = {
       AAPL: {
-        name: "Apple Inc.",
-        sector: "Technology",
-        industry: "Consumer Electronics",
+        name: 'Apple Inc.',
+        sector: 'Technology',
+        industry: 'Consumer Electronics',
       },
       MSFT: {
-        name: "Microsoft Corporation",
-        sector: "Technology",
-        industry: "Software",
+        name: 'Microsoft Corporation',
+        sector: 'Technology',
+        industry: 'Software',
       },
       GOOGL: {
-        name: "Alphabet Inc.",
-        sector: "Technology",
-        industry: "Internet Services",
+        name: 'Alphabet Inc.',
+        sector: 'Technology',
+        industry: 'Internet Services',
       },
       AMZN: {
-        name: "Amazon.com Inc.",
-        sector: "Consumer Discretionary",
-        industry: "E-commerce",
+        name: 'Amazon.com Inc.',
+        sector: 'Consumer Discretionary',
+        industry: 'E-commerce',
       },
       TSLA: {
-        name: "Tesla Inc.",
-        sector: "Consumer Discretionary",
-        industry: "Electric Vehicles",
+        name: 'Tesla Inc.',
+        sector: 'Consumer Discretionary',
+        industry: 'Electric Vehicles',
       },
       META: {
-        name: "Meta Platforms Inc.",
-        sector: "Technology",
-        industry: "Social Media",
+        name: 'Meta Platforms Inc.',
+        sector: 'Technology',
+        industry: 'Social Media',
       },
       NVDA: {
-        name: "NVIDIA Corporation",
-        sector: "Technology",
-        industry: "Semiconductors",
+        name: 'NVIDIA Corporation',
+        sector: 'Technology',
+        industry: 'Semiconductors',
       },
     };
 
     return (
       companyData[ticker.toUpperCase()] || {
         name: `${ticker.toUpperCase()} Corporation`,
-        sector: "Technology",
-        industry: "Software",
+        sector: 'Technology',
+        industry: 'Software',
       }
     );
   }

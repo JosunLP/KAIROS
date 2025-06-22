@@ -14,12 +14,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - "5433:5432"
+      - '5433:5432'
     networks:
       - kairos_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kairos -d kairos"]
+      test: ['CMD-SHELL', 'pg_isready -U kairos -d kairos']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -38,12 +38,12 @@ services:
       - ml_models:/app/models
       - ml_logs:/app/logs
     ports:
-      - "8081:8080"
+      - '8081:8080'
     networks:
       - kairos_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -65,7 +65,7 @@ services:
         npx prisma generate &&
         echo '✅ Datenbank initialisiert!'
       "
-    restart: "no"
+    restart: 'no'
 
   # Hauptanwendung (Produktion)
   kairos:
@@ -143,7 +143,8 @@ services:
       # Source-Code für Hot-Reload
       - ./src:/app/src
       - ./prisma:/app/prisma
-      - ./package*.json:/app/
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
       # Log-Dateien
       - app_logs_dev:/app/logs
     networks:
@@ -173,7 +174,7 @@ services:
     volumes:
       - ./prisma:/app/prisma
     ports:
-      - "5555:5555"
+      - '5555:5555'
     networks:
       - kairos_network
     depends_on:
@@ -188,7 +189,7 @@ services:
     image: redis:7-alpine
     container_name: kairos-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     networks:
@@ -201,11 +202,11 @@ volumes:
   # Datenbank-Volume
   postgres_data:
     driver: local
-  
+
   # ML-Models Volume
   ml_models:
     driver: local
-  
+
   # Log-Volumes
   app_logs:
     driver: local
@@ -213,7 +214,7 @@ volumes:
     driver: local
   ml_logs:
     driver: local
-    
+
   # Redis-Volume
   redis_data:
     driver: local

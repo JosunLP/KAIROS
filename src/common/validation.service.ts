@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -41,7 +41,7 @@ export class ValidationService {
     maxTradeSize: 100000, // $100k
     minTradeSize: 100, // $100
     maxLeverage: 2.0,
-    allowedOrderTypes: ["MARKET", "LIMIT", "STOP", "STOP_LIMIT"],
+    allowedOrderTypes: ['MARKET', 'LIMIT', 'STOP', 'STOP_LIMIT'],
     maxSlippage: 1.0, // 1% max slippage
   };
 
@@ -52,8 +52,8 @@ export class ValidationService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (!ticker || typeof ticker !== "string") {
-      errors.push("Ticker must be a non-empty string");
+    if (!ticker || typeof ticker !== 'string') {
+      errors.push('Ticker must be a non-empty string');
       return { isValid: false, errors, warnings };
     }
 
@@ -61,18 +61,18 @@ export class ValidationService {
 
     // Grundlegende Format-Prüfung
     if (!/^[A-Z]{1,5}$/.test(cleanTicker)) {
-      errors.push("Ticker must be 1-5 uppercase letters");
+      errors.push('Ticker must be 1-5 uppercase letters');
     }
 
     // Bekannte problematische Ticker
-    const blacklisted = ["TEST", "DEMO", "NULL", "VOID"];
+    const blacklisted = ['TEST', 'DEMO', 'NULL', 'VOID'];
     if (blacklisted.includes(cleanTicker)) {
       errors.push(`Ticker ${cleanTicker} is blacklisted`);
     }
 
     // Warnungen für seltene Ticker
     if (cleanTicker.length === 1) {
-      warnings.push("Single-letter tickers are rare and might not exist");
+      warnings.push('Single-letter tickers are rare and might not exist');
     }
 
     return { isValid: errors.length === 0, errors, warnings };
@@ -81,11 +81,11 @@ export class ValidationService {
   /**
    * Validiert Preis-Werte
    */
-  validatePrice(price: number, fieldName: string = "price"): ValidationResult {
+  validatePrice(price: number, fieldName: string = 'price'): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (typeof price !== "number" || isNaN(price)) {
+    if (typeof price !== 'number' || isNaN(price)) {
       errors.push(`${fieldName} must be a valid number`);
       return { isValid: false, errors, warnings };
     }
@@ -112,17 +112,17 @@ export class ValidationService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (typeof quantity !== "number" || isNaN(quantity)) {
-      errors.push("Quantity must be a valid number");
+    if (typeof quantity !== 'number' || isNaN(quantity)) {
+      errors.push('Quantity must be a valid number');
       return { isValid: false, errors, warnings };
     }
 
     if (quantity <= 0) {
-      errors.push("Quantity must be greater than 0");
+      errors.push('Quantity must be greater than 0');
     }
 
     if (quantity !== Math.floor(quantity)) {
-      errors.push("Quantity must be a whole number");
+      errors.push('Quantity must be a whole number');
     }
 
     if (quantity > 1000000) {
@@ -137,14 +137,14 @@ export class ValidationService {
    */
   validateDate(
     date: Date | string,
-    fieldName: string = "date",
+    fieldName: string = 'date',
   ): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
     let dateObj: Date;
 
-    if (typeof date === "string") {
+    if (typeof date === 'string') {
       dateObj = new Date(date);
     } else if (date instanceof Date) {
       dateObj = date;
@@ -193,22 +193,22 @@ export class ValidationService {
     const activeRules = { ...this.defaultPortfolioRules, ...rules };
 
     if (!portfolio) {
-      errors.push("Portfolio is required");
+      errors.push('Portfolio is required');
       return { isValid: false, errors, warnings };
     }
 
     // Portfolio Name
     if (
       !portfolio.name ||
-      typeof portfolio.name !== "string" ||
+      typeof portfolio.name !== 'string' ||
       portfolio.name.trim().length === 0
     ) {
-      errors.push("Portfolio name is required");
+      errors.push('Portfolio name is required');
     }
 
     // Positionen validieren
     if (!Array.isArray(portfolio.positions)) {
-      errors.push("Portfolio positions must be an array");
+      errors.push('Portfolio positions must be an array');
     } else {
       // Anzahl Positionen
       if (
@@ -262,7 +262,7 @@ export class ValidationService {
     if (portfolio.totalValue !== undefined) {
       const valueResult = this.validatePrice(
         portfolio.totalValue,
-        "totalValue",
+        'totalValue',
       );
       errors.push(...valueResult.errors);
       warnings.push(...valueResult.warnings);
@@ -286,35 +286,31 @@ export class ValidationService {
 
     // Ticker validieren
     const tickerResult = this.validateTicker(position.ticker);
-    errors.push(...tickerResult.errors.map((err) => `${prefix} ${err}`));
-    warnings.push(...tickerResult.warnings.map((warn) => `${prefix} ${warn}`));
+    errors.push(...tickerResult.errors.map(err => `${prefix} ${err}`));
+    warnings.push(...tickerResult.warnings.map(warn => `${prefix} ${warn}`));
 
     // Quantity validieren
     const quantityResult = this.validateQuantity(position.quantity);
-    errors.push(...quantityResult.errors.map((err) => `${prefix} ${err}`));
-    warnings.push(
-      ...quantityResult.warnings.map((warn) => `${prefix} ${warn}`),
-    );
+    errors.push(...quantityResult.errors.map(err => `${prefix} ${err}`));
+    warnings.push(...quantityResult.warnings.map(warn => `${prefix} ${warn}`));
 
     // Average Price validieren
     const priceResult = this.validatePrice(
       position.averagePrice,
-      "averagePrice",
+      'averagePrice',
     );
-    errors.push(...priceResult.errors.map((err) => `${prefix} ${err}`));
-    warnings.push(...priceResult.warnings.map((warn) => `${prefix} ${warn}`));
+    errors.push(...priceResult.errors.map(err => `${prefix} ${err}`));
+    warnings.push(...priceResult.warnings.map(warn => `${prefix} ${warn}`));
 
     // Current Price (optional)
     if (position.currentPrice !== undefined) {
       const currentPriceResult = this.validatePrice(
         position.currentPrice,
-        "currentPrice",
+        'currentPrice',
       );
-      errors.push(
-        ...currentPriceResult.errors.map((err) => `${prefix} ${err}`),
-      );
+      errors.push(...currentPriceResult.errors.map(err => `${prefix} ${err}`));
       warnings.push(
-        ...currentPriceResult.warnings.map((warn) => `${prefix} ${warn}`),
+        ...currentPriceResult.warnings.map(warn => `${prefix} ${warn}`),
       );
     }
 
@@ -329,31 +325,31 @@ export class ValidationService {
     const warnings: string[] = [];
 
     if (!config) {
-      errors.push("Backtest config is required");
+      errors.push('Backtest config is required');
       return { isValid: false, errors, warnings };
     }
 
     // Tickers validieren
     if (!Array.isArray(config.tickers) || config.tickers.length === 0) {
-      errors.push("At least one ticker is required");
+      errors.push('At least one ticker is required');
     } else {
       config.tickers.forEach((ticker: string, index: number) => {
         const tickerResult = this.validateTicker(ticker);
         errors.push(
-          ...tickerResult.errors.map((err) => `Ticker ${index}: ${err}`),
+          ...tickerResult.errors.map(err => `Ticker ${index}: ${err}`),
         );
         warnings.push(
-          ...tickerResult.warnings.map((warn) => `Ticker ${index}: ${warn}`),
+          ...tickerResult.warnings.map(warn => `Ticker ${index}: ${warn}`),
         );
       });
     }
 
     // Datum validieren
-    const startDateResult = this.validateDate(config.startDate, "startDate");
+    const startDateResult = this.validateDate(config.startDate, 'startDate');
     errors.push(...startDateResult.errors);
     warnings.push(...startDateResult.warnings);
 
-    const endDateResult = this.validateDate(config.endDate, "endDate");
+    const endDateResult = this.validateDate(config.endDate, 'endDate');
     errors.push(...endDateResult.errors);
     warnings.push(...endDateResult.warnings);
 
@@ -363,16 +359,16 @@ export class ValidationService {
       const endDate = new Date(config.endDate);
 
       if (startDate >= endDate) {
-        errors.push("Start date must be before end date");
+        errors.push('Start date must be before end date');
       }
 
       const daysDiff =
         (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
       if (daysDiff < 30) {
-        warnings.push("Backtest period is very short (less than 30 days)");
+        warnings.push('Backtest period is very short (less than 30 days)');
       }
       if (daysDiff > 365 * 5) {
-        warnings.push("Backtest period is very long (more than 5 years)");
+        warnings.push('Backtest period is very long (more than 5 years)');
       }
     }
 
@@ -380,13 +376,13 @@ export class ValidationService {
     if (config.initialCapital !== undefined) {
       const capitalResult = this.validatePrice(
         config.initialCapital,
-        "initialCapital",
+        'initialCapital',
       );
       errors.push(...capitalResult.errors);
       warnings.push(...capitalResult.warnings);
 
       if (config.initialCapital < 1000) {
-        warnings.push("Initial capital is very low (< $1000)");
+        warnings.push('Initial capital is very low (< $1000)');
       }
     }
 
@@ -401,40 +397,40 @@ export class ValidationService {
     const warnings: string[] = [];
 
     if (!config) {
-      errors.push("ML training config is required");
+      errors.push('ML training config is required');
       return { isValid: false, errors, warnings };
     }
 
     // Epochs validieren
     if (config.epochs !== undefined) {
       if (
-        typeof config.epochs !== "number" ||
+        typeof config.epochs !== 'number' ||
         config.epochs <= 0 ||
         config.epochs !== Math.floor(config.epochs)
       ) {
-        errors.push("Epochs must be a positive integer");
+        errors.push('Epochs must be a positive integer');
       } else if (config.epochs > 1000) {
         warnings.push(
-          "Very high number of epochs (> 1000) may take a long time",
+          'Very high number of epochs (> 1000) may take a long time',
         );
       } else if (config.epochs < 10) {
         warnings.push(
-          "Low number of epochs (< 10) may result in undertrained model",
+          'Low number of epochs (< 10) may result in undertrained model',
         );
       }
     }
 
     // Learning Rate validieren
     if (config.learningRate !== undefined) {
-      if (typeof config.learningRate !== "number" || config.learningRate <= 0) {
-        errors.push("Learning rate must be a positive number");
+      if (typeof config.learningRate !== 'number' || config.learningRate <= 0) {
+        errors.push('Learning rate must be a positive number');
       } else if (config.learningRate > 1.0) {
         warnings.push(
-          "High learning rate (> 1.0) may cause training instability",
+          'High learning rate (> 1.0) may cause training instability',
         );
       } else if (config.learningRate < 0.00001) {
         warnings.push(
-          "Very low learning rate (< 0.00001) may result in slow training",
+          'Very low learning rate (< 0.00001) may result in slow training',
         );
       }
     }
@@ -442,17 +438,17 @@ export class ValidationService {
     // Batch Size validieren
     if (config.batchSize !== undefined) {
       if (
-        typeof config.batchSize !== "number" ||
+        typeof config.batchSize !== 'number' ||
         config.batchSize <= 0 ||
         config.batchSize !== Math.floor(config.batchSize)
       ) {
-        errors.push("Batch size must be a positive integer");
+        errors.push('Batch size must be a positive integer');
       } else if (config.batchSize > 1024) {
         warnings.push(
-          "Large batch size (> 1024) may require significant memory",
+          'Large batch size (> 1024) may require significant memory',
         );
       } else if (config.batchSize < 8) {
-        warnings.push("Small batch size (< 8) may result in unstable training");
+        warnings.push('Small batch size (< 8) may result in unstable training');
       }
     }
 
@@ -488,14 +484,14 @@ export class ValidationService {
    * Sanitized Input (entfernt potentiell gefährliche Zeichen)
    */
   sanitizeInput(input: string): string {
-    if (typeof input !== "string") {
-      return "";
+    if (typeof input !== 'string') {
+      return '';
     }
 
     return input
-      .replace(/[<>]/g, "") // HTML Tags entfernen
-      .replace(/['"]/g, "") // Quotes entfernen
-      .replace(/[;]/g, "") // Semikolons entfernen
+      .replace(/[<>]/g, '') // HTML Tags entfernen
+      .replace(/['"]/g, '') // Quotes entfernen
+      .replace(/[;]/g, '') // Semikolons entfernen
       .trim();
   }
 
@@ -506,18 +502,18 @@ export class ValidationService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (!email || typeof email !== "string") {
-      errors.push("Email is required");
+    if (!email || typeof email !== 'string') {
+      errors.push('Email is required');
       return { isValid: false, errors, warnings };
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      errors.push("Invalid email format");
+      errors.push('Invalid email format');
     }
 
     if (email.length > 254) {
-      errors.push("Email is too long");
+      errors.push('Email is too long');
     }
 
     return { isValid: errors.length === 0, errors, warnings };

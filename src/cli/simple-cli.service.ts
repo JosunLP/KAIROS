@@ -1,22 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { DataIngestionService } from "../data-ingestion/data-ingestion.service";
-import { AnalysisEngineService } from "../analysis-engine/analysis-engine.service";
-import { MlPredictionService } from "../ml-prediction/ml-prediction.service";
-import { PrismaService } from "../persistence/prisma.service";
-import { PortfolioService } from "../portfolio/portfolio.service";
-import { BacktestService } from "../portfolio/backtest.service";
-import { RiskManagementService } from "../portfolio/risk-management.service";
-import { AutomationService } from "../automation/automation.service";
-import { TrainingStatus } from "../common/types";
-
-// Erweiterte TrainingStatus Interface für erweiterte CLI Funktionen
-interface ExtendedTrainingStatus extends TrainingStatus {
-  startTime?: Date;
-  currentEpoch?: number;
-  totalEpochs?: number;
-  shouldStop?: boolean;
-}
-import { PredictionResult } from "../common/types";
+import { Injectable, Logger } from '@nestjs/common';
+import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
+import { AutomationService } from '../automation/automation.service';
+import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
+import { MlPredictionService } from '../ml-prediction/ml-prediction.service';
+import { PrismaService } from '../persistence/prisma.service';
+import { BacktestService } from '../portfolio/backtest.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
+import { RiskManagementService } from '../portfolio/risk-management.service';
 
 @Injectable()
 export class SimpleCliService {
@@ -40,80 +30,80 @@ export class SimpleCliService {
 
     try {
       switch (command) {
-        case "status":
+        case 'status':
           await this.handleStatusCommand();
           break;
-        case "track":
+        case 'track':
           await this.handleTrackCommand(args[3]);
           break;
-        case "predict":
+        case 'predict':
           await this.handlePredictCommand(args[3]);
           break;
-        case "train":
+        case 'train':
           await this.handleTrainCommand();
           break;
-        case "train-start":
+        case 'train-start':
           await this.handleTrainStartCommand();
           break;
-        case "train-stop":
+        case 'train-stop':
           await this.handleTrainStopCommand();
           break;
-        case "train-status":
+        case 'train-status':
           await this.handleTrainStatusCommand();
           break;
-        case "list":
+        case 'list':
           await this.handleListCommand();
           break;
-        case "portfolio-create":
+        case 'portfolio-create':
           await this.handlePortfolioCreateCommand(args[3]);
           break;
-        case "portfolio-list":
+        case 'portfolio-list':
           await this.handlePortfolioListCommand();
           break;
-        case "portfolio-add":
+        case 'portfolio-add':
           await this.handlePortfolioAddPositionCommand(
             args[3],
             args[4],
-            parseFloat(args[5] || "1"),
+            parseFloat(args[5] || '1'),
           );
           break;
-        case "portfolio-remove":
+        case 'portfolio-remove':
           await this.handlePortfolioRemovePositionCommand(args[3], args[4]);
           break;
-        case "portfolio-analyze":
+        case 'portfolio-analyze':
           await this.handlePortfolioAnalyzeCommand(args[3]);
           break;
-        case "backtest":
+        case 'backtest':
           await this.handleBacktestCommand(args[3], args[4], args[5]);
           break;
-        case "risk-analysis":
+        case 'risk-analysis':
           await this.handleRiskAnalysisCommand(args[3]);
           break;
-        case "persistent-start":
+        case 'persistent-start':
           await this.startPersistentMode();
           break;
-        case "persistent-stop":
+        case 'persistent-stop':
           await this.stopPersistentMode();
           break;
-        case "dashboard":
+        case 'dashboard':
           await this.handleDashboardCommand();
           break;
-        case "automation-start":
+        case 'automation-start':
           await this.handleAutomationStartCommand();
           break;
-        case "automation-stop":
+        case 'automation-stop':
           await this.handleAutomationStopCommand();
           break;
-        case "automation-status":
+        case 'automation-status':
           await this.handleAutomationStatusCommand();
           break;
-        case "automation-config":
+        case 'automation-config':
           await this.handleAutomationConfigCommand(args.slice(3));
           break;
-        case "test-provider":
+        case 'test-provider':
           await this.handleTestProviderCommand(args[3], args[4]);
           break;
-        case "provider-status":
+        case 'provider-status':
           await this.handleProviderStatusCommand();
           break;
         default:
@@ -126,8 +116,8 @@ export class SimpleCliService {
   }
 
   private async handleStatusCommand(): Promise<void> {
-    console.log("🚀 KAIROS Stock Analysis CLI - Status");
-    console.log("=====================================");
+    console.log('🚀 KAIROS Stock Analysis CLI - Status');
+    console.log('=====================================');
 
     try {
       const stockCount = await this.prismaService.stock.count();
@@ -138,7 +128,7 @@ export class SimpleCliService {
 
       if (stockCount > 0) {
         const latestData = await this.prismaService.historicalData.findFirst({
-          orderBy: { timestamp: "desc" },
+          orderBy: { timestamp: 'desc' },
           include: { stock: true },
         });
 
@@ -149,16 +139,16 @@ export class SimpleCliService {
         }
       }
 
-      console.log("✅ System ist bereit");
+      console.log('✅ System ist bereit');
     } catch (error) {
-      console.log("❌ Fehler beim Abrufen des Status");
+      console.log('❌ Fehler beim Abrufen des Status');
       throw error;
     }
   }
 
   private async handleTrackCommand(ticker: string): Promise<void> {
     if (!ticker) {
-      console.log("❌ Bitte geben Sie ein Ticker-Symbol an: kairos track AAPL");
+      console.log('❌ Bitte geben Sie ein Ticker-Symbol an: kairos track AAPL');
       return;
     }
 
@@ -175,7 +165,7 @@ export class SimpleCliService {
       } // Aktie zur Datenbank hinzufügen
       await this.dataIngestionService.addNewStock(ticker.toUpperCase());
       // Historische Daten abrufen
-      console.log("📥 Lade historische Daten...");
+      console.log('📥 Lade historische Daten...');
       await this.dataIngestionService.fetchHistoricalDataForStock(
         ticker.toUpperCase(),
       );
@@ -190,7 +180,7 @@ export class SimpleCliService {
   private async handlePredictCommand(ticker: string): Promise<void> {
     if (!ticker) {
       console.log(
-        "❌ Bitte geben Sie ein Ticker-Symbol an: kairos predict AAPL",
+        '❌ Bitte geben Sie ein Ticker-Symbol an: kairos predict AAPL',
       );
       return;
     }
@@ -218,20 +208,20 @@ export class SimpleCliService {
       );
 
       if (prediction) {
-        console.log("\n📊 Prognose-Ergebnis:");
-        console.log("====================");
+        console.log('\n📊 Prognose-Ergebnis:');
+        console.log('====================');
         console.log(`🎯 Aktie: ${ticker.toUpperCase()}`);
         console.log(
           `🎲 Konfidenz: ${(prediction.confidence * 100).toFixed(1)}%`,
         );
         console.log(
-          `💹 Prognostizierte Richtung: ${prediction.prediction > 0 ? "📈 Aufwärts" : "📉 Abwärts"}`,
+          `💹 Prognostizierte Richtung: ${prediction.prediction > 0 ? '📈 Aufwärts' : '📉 Abwärts'}`,
         );
         console.log(`🕐 Zeitstempel: ${prediction.timestamp.toLocaleString()}`);
 
-        console.log("\n⚠️  Disclaimer: Dies ist keine Anlageberatung!");
+        console.log('\n⚠️  Disclaimer: Dies ist keine Anlageberatung!');
       } else {
-        console.log("❌ Keine Prognose möglich - nicht genügend Daten");
+        console.log('❌ Keine Prognose möglich - nicht genügend Daten');
       }
     } catch (error) {
       console.log(`❌ Fehler bei der Prognose für ${ticker}`);
@@ -240,32 +230,32 @@ export class SimpleCliService {
   }
 
   private async handleTrainCommand(): Promise<void> {
-    console.log("🧠 Starte ML-Modell Training...");
+    console.log('🧠 Starte ML-Modell Training...');
 
     try {
       await this.mlPredictionService.trainModel();
-      console.log("✅ ML-Modell erfolgreich trainiert");
+      console.log('✅ ML-Modell erfolgreich trainiert');
     } catch (error) {
-      console.log("❌ Fehler beim Training des ML-Modells");
+      console.log('❌ Fehler beim Training des ML-Modells');
       throw error;
     }
   }
 
   private async handleTrainStartCommand(): Promise<void> {
     if (!this.persistentMode) {
-      console.log("🧠 Starte erweiteres ML-Modell Training...");
+      console.log('🧠 Starte erweiteres ML-Modell Training...');
       console.log("💡 Verwenden Sie 'kairos train-stop' zum sicheren Beenden");
       console.log("💡 Verwenden Sie 'kairos train-status' für Status-Updates");
 
       try {
         const success = await this.mlPredictionService.startTraining();
         if (success) {
-          console.log("✅ ML-Modell erfolgreich trainiert");
+          console.log('✅ ML-Modell erfolgreich trainiert');
         } else {
-          console.log("⚠️ Training wurde abgebrochen oder fehlgeschlagen");
+          console.log('⚠️ Training wurde abgebrochen oder fehlgeschlagen');
         }
       } catch (error) {
-        console.log("❌ Fehler beim Training des ML-Modells");
+        console.log('❌ Fehler beim Training des ML-Modells');
         throw error;
       }
       return;
@@ -274,15 +264,15 @@ export class SimpleCliService {
     // Persistenter Modus
     const trainingStatus = this.mlPredictionService.getTrainingStatus();
     if (trainingStatus.isTraining) {
-      console.log("⚠️ Training läuft bereits im Hintergrund");
+      console.log('⚠️ Training läuft bereits im Hintergrund');
       console.log(
         "💡 Verwenden Sie 'train-status' für Details oder 'train-stop' zum Beenden",
       );
       return;
     }
 
-    console.log("🧠 Starte Hintergrund-Training...");
-    console.log("💡 Das Training läuft im Hintergrund. CLI bleibt verfügbar.");
+    console.log('🧠 Starte Hintergrund-Training...');
+    console.log('💡 Das Training läuft im Hintergrund. CLI bleibt verfügbar.');
     console.log(
       "💡 Verwenden Sie 'train-status' für Updates oder 'train-stop' zum Beenden",
     );
@@ -291,28 +281,28 @@ export class SimpleCliService {
       // Training im Hintergrund starten (non-blocking)
       this.mlPredictionService
         .startTraining()
-        .then((success) => {
+        .then(success => {
           if (success) {
-            console.log("\n✅ Hintergrund-Training erfolgreich abgeschlossen");
+            console.log('\n✅ Hintergrund-Training erfolgreich abgeschlossen');
           } else {
-            console.log("\n⚠️ Hintergrund-Training wurde abgebrochen");
+            console.log('\n⚠️ Hintergrund-Training wurde abgebrochen');
           }
-          console.log("kairos> "); // Prompt wiederherstellen
+          console.log('kairos> '); // Prompt wiederherstellen
         })
-        .catch((error) => {
-          console.log("\n❌ Fehler beim Hintergrund-Training:", error.message);
-          console.log("kairos> "); // Prompt wiederherstellen
+        .catch(error => {
+          console.log('\n❌ Fehler beim Hintergrund-Training:', error.message);
+          console.log('kairos> '); // Prompt wiederherstellen
         });
 
       // Kurz warten und ersten Status zeigen
       setTimeout(() => {
         const status = this.mlPredictionService.getTrainingStatus();
         if (status.isTraining) {
-          console.log("🟢 Hintergrund-Training gestartet");
+          console.log('🟢 Hintergrund-Training gestartet');
         }
       }, 1000);
     } catch (error) {
-      console.log("❌ Fehler beim Starten des Hintergrund-Trainings");
+      console.log('❌ Fehler beim Starten des Hintergrund-Trainings');
       throw error;
     }
   }
@@ -321,45 +311,45 @@ export class SimpleCliService {
     const trainingStatus = this.mlPredictionService.getTrainingStatus();
 
     if (!trainingStatus.isTraining) {
-      console.log("⚠️ Kein Training läuft derzeit");
+      console.log('⚠️ Kein Training läuft derzeit');
       return;
     }
 
     if (this.persistentMode) {
-      console.log("🛑 Beende Hintergrund-Training...");
+      console.log('🛑 Beende Hintergrund-Training...');
     } else {
-      console.log("🛑 Beende Training sicher...");
+      console.log('🛑 Beende Training sicher...');
     }
 
     try {
       const success = await this.mlPredictionService.stopTraining();
       if (success) {
-        console.log("✅ Training wurde sicher beendet");
+        console.log('✅ Training wurde sicher beendet');
       } else {
-        console.log("⚠️ Kein Training läuft derzeit");
+        console.log('⚠️ Kein Training läuft derzeit');
       }
     } catch (error) {
-      console.log("❌ Fehler beim Beenden des Trainings");
+      console.log('❌ Fehler beim Beenden des Trainings');
       throw error;
     }
   }
 
   private async handleTrainStatusCommand(): Promise<void> {
-    console.log("📊 Training Status:");
-    console.log("==================");
+    console.log('📊 Training Status:');
+    console.log('==================');
 
     try {
       const status = this.mlPredictionService.getTrainingStatus();
 
       if (!status.isTraining) {
-        console.log("🔴 Kein Training läuft derzeit");
+        console.log('🔴 Kein Training läuft derzeit');
         console.log(
           "💡 Verwenden Sie 'kairos train-start' um Training zu starten",
         );
         return;
       }
 
-      console.log("🟢 Training läuft...");
+      console.log('🟢 Training läuft...');
 
       if (status.startTime) {
         const runningTime = Date.now() - status.startTime.getTime();
@@ -390,22 +380,22 @@ export class SimpleCliService {
         "\n💡 Verwenden Sie 'kairos train-stop' zum sicheren Beenden",
       );
     } catch (error) {
-      console.log("❌ Fehler beim Abrufen des Training-Status");
+      console.log('❌ Fehler beim Abrufen des Training-Status');
       throw error;
     }
   }
 
   private async handleListCommand(): Promise<void> {
-    console.log("📋 Verfolgte Aktien:");
-    console.log("===================");
+    console.log('📋 Verfolgte Aktien:');
+    console.log('===================');
 
     try {
       const stocks = await this.prismaService.stock.findMany({
-        orderBy: { ticker: "asc" },
+        orderBy: { ticker: 'asc' },
       });
 
       if (stocks.length === 0) {
-        console.log("📭 Keine Aktien werden verfolgt");
+        console.log('📭 Keine Aktien werden verfolgt');
         console.log(
           '💡 Verwenden Sie "kairos track <TICKER>" um eine Aktie hinzuzufügen',
         );
@@ -416,95 +406,97 @@ export class SimpleCliService {
         // Neueste Daten für jede Aktie abrufen
         const latestData = await this.prismaService.historicalData.findFirst({
           where: { stockId: stock.id },
-          orderBy: { timestamp: "desc" },
+          orderBy: { timestamp: 'desc' },
         });
 
-        const price = latestData ? `$${latestData.close.toFixed(2)}` : "N/A";
+        const price = latestData ? `$${latestData.close.toFixed(2)}` : 'N/A';
         const date = latestData
           ? latestData.timestamp.toLocaleDateString()
-          : "N/A";
+          : 'N/A';
 
         console.log(
           `📈 ${stock.ticker.padEnd(6)} | ${stock.name.padEnd(30)} | ${price.padStart(10)} | ${date}`,
         );
       }
     } catch (error) {
-      console.log("❌ Fehler beim Auflisten der Aktien");
+      console.log('❌ Fehler beim Auflisten der Aktien');
       throw error;
     }
   }
 
   private showHelp(): void {
-    console.log("🎯 KAIROS - KI-gestützte Aktienanalyse");
-    console.log("=====================================");
-    console.log("");
-    console.log("📊 GRUNDLEGENDE BEFEHLE:");
-    console.log("  status               - System-Status anzeigen");
-    console.log("  dashboard            - Übersicht aller Daten");
-    console.log("  list                 - Alle verfolgten Aktien auflisten");
-    console.log("  track <TICKER>       - Aktie zur Verfolgung hinzufügen");
-    console.log("");
-    console.log("🔌 DATENQUELLEN:");
-    console.log("  provider-status      - Status aller Datenquellen anzeigen");
-    console.log("  test-provider <NAME> [TICKER] - Provider testen (alpha-vantage, polygon, finnhub, mock)");
-    console.log("");
-    console.log("🤖 ML-VORHERSAGEN:");
-    console.log("  predict <TICKER>     - Preis-Vorhersage für Aktie");
-    console.log("  train                - Einmaliges ML-Training starten");
-    console.log("  train-start          - Kontinuierliches Training starten");
-    console.log("  train-stop           - Training beenden");
-    console.log("  train-status         - Training-Status anzeigen");
-    console.log("");
-    console.log("💼 PORTFOLIO-MANAGEMENT:");
+    console.log('🎯 KAIROS - KI-gestützte Aktienanalyse');
+    console.log('=====================================');
+    console.log('');
+    console.log('📊 GRUNDLEGENDE BEFEHLE:');
+    console.log('  status               - System-Status anzeigen');
+    console.log('  dashboard            - Übersicht aller Daten');
+    console.log('  list                 - Alle verfolgten Aktien auflisten');
+    console.log('  track <TICKER>       - Aktie zur Verfolgung hinzufügen');
+    console.log('');
+    console.log('🔌 DATENQUELLEN:');
+    console.log('  provider-status      - Status aller Datenquellen anzeigen');
     console.log(
-      "  portfolio-create <NAME>                    - Neues Portfolio erstellen",
+      '  test-provider <NAME> [TICKER] - Provider testen (alpha-vantage, polygon, finnhub, mock)',
+    );
+    console.log('');
+    console.log('🤖 ML-VORHERSAGEN:');
+    console.log('  predict <TICKER>     - Preis-Vorhersage für Aktie');
+    console.log('  train                - Einmaliges ML-Training starten');
+    console.log('  train-start          - Kontinuierliches Training starten');
+    console.log('  train-stop           - Training beenden');
+    console.log('  train-status         - Training-Status anzeigen');
+    console.log('');
+    console.log('💼 PORTFOLIO-MANAGEMENT:');
+    console.log(
+      '  portfolio-create <NAME>                    - Neues Portfolio erstellen',
     );
     console.log(
-      "  portfolio-list                             - Alle Portfolios auflisten",
+      '  portfolio-list                             - Alle Portfolios auflisten',
     );
     console.log(
-      "  portfolio-add <ID> <TICKER> <QUANTITY>     - Position hinzufügen",
+      '  portfolio-add <ID> <TICKER> <QUANTITY>     - Position hinzufügen',
     );
     console.log(
-      "  portfolio-remove <ID> <TICKER>             - Position entfernen",
+      '  portfolio-remove <ID> <TICKER>             - Position entfernen',
     );
     console.log(
-      "  portfolio-analyze <ID>                     - Portfolio analysieren",
+      '  portfolio-analyze <ID>                     - Portfolio analysieren',
     );
-    console.log("");
-    console.log("📈 BACKTESTING & RISIKO:");
+    console.log('');
+    console.log('📈 BACKTESTING & RISIKO:');
     console.log(
-      "  backtest <STRATEGY> <START> <END>         - Backtest durchführen",
+      '  backtest <STRATEGY> <START> <END>         - Backtest durchführen',
     );
-    console.log("  risk-analysis <PORTFOLIO_ID>              - Risiko-Analyse");
-    console.log("");
-    console.log("🤖 VOLLAUTOMATIK:");
-    console.log("  automation-start     - Vollautomatik starten");
-    console.log("  automation-stop      - Vollautomatik stoppen");
-    console.log("  automation-status    - Automation-Status anzeigen");
+    console.log('  risk-analysis <PORTFOLIO_ID>              - Risiko-Analyse');
+    console.log('');
+    console.log('🤖 VOLLAUTOMATIK:');
+    console.log('  automation-start     - Vollautomatik starten');
+    console.log('  automation-stop      - Vollautomatik stoppen');
+    console.log('  automation-status    - Automation-Status anzeigen');
     console.log(
-      "  automation-config [KEY VALUE] - Konfiguration anzeigen/ändern",
+      '  automation-config [KEY VALUE] - Konfiguration anzeigen/ändern',
     );
-    console.log("");
-    console.log("🔧 SYSTEM:");
-    console.log("  persistent-start     - Kontinuierlichen Modus starten");
-    console.log("  persistent-stop      - Kontinuierlichen Modus beenden");
-    console.log("");
-    console.log("📋 BEISPIELE:");
-    console.log("  kairos track AAPL");
-    console.log("  kairos provider-status");
-    console.log("  kairos test-provider alpha-vantage AAPL");
-    console.log("  kairos predict AAPL");
+    console.log('');
+    console.log('🔧 SYSTEM:');
+    console.log('  persistent-start     - Kontinuierlichen Modus starten');
+    console.log('  persistent-stop      - Kontinuierlichen Modus beenden');
+    console.log('');
+    console.log('📋 BEISPIELE:');
+    console.log('  kairos track AAPL');
+    console.log('  kairos provider-status');
+    console.log('  kairos test-provider alpha-vantage AAPL');
+    console.log('  kairos predict AAPL');
     console.log("  kairos portfolio-create 'Mein Portfolio'");
-    console.log("  kairos backtest rsi 2024-01-01 2024-12-31");
-    console.log("  kairos automation-start");
-    console.log("  kairos automation-config data-interval 10");
-    console.log("");
-    console.log("💡 Verfügbare Strategien: rsi, sma, macd");
+    console.log('  kairos backtest rsi 2024-01-01 2024-12-31');
+    console.log('  kairos automation-start');
+    console.log('  kairos automation-config data-interval 10');
+    console.log('');
+    console.log('💡 Verfügbare Strategien: rsi, sma, macd');
 
     if (this.persistentMode) {
-      console.log("");
-      console.log("🔄 Persistenter Modus aktiv - CLI bleibt geöffnet");
+      console.log('');
+      console.log('🔄 Persistenter Modus aktiv - CLI bleibt geöffnet');
       console.log("💡 Verwenden Sie 'exit' oder 'quit' zum Beenden");
     }
   }
@@ -514,7 +506,7 @@ export class SimpleCliService {
    */
   async startPersistentMode(): Promise<void> {
     this.persistentMode = true;
-    this.logger.log("🔄 Persistenter CLI-Modus aktiviert");
+    this.logger.log('🔄 Persistenter CLI-Modus aktiviert');
 
     // Hintergrund-Training-Status-Updates starten
     this.startBackgroundStatusUpdates();
@@ -535,11 +527,11 @@ export class SimpleCliService {
     // Laufendes Training sicher beenden
     const trainingStatus = this.mlPredictionService.getTrainingStatus();
     if (trainingStatus.isTraining) {
-      console.log("🛑 Beende laufendes Training...");
+      console.log('🛑 Beende laufendes Training...');
       await this.mlPredictionService.stopTraining();
     }
 
-    this.logger.log("🔄 Persistenter CLI-Modus deaktiviert");
+    this.logger.log('🔄 Persistenter CLI-Modus deaktiviert');
   }
 
   /**
@@ -554,13 +546,13 @@ export class SimpleCliService {
         const progress =
           status.currentEpoch && status.totalEpochs
             ? `${status.currentEpoch}/${status.totalEpochs}`
-            : "N/A";
+            : 'N/A';
 
-        const loss = status.loss !== undefined ? status.loss.toFixed(4) : "N/A";
+        const loss = status.loss !== undefined ? status.loss.toFixed(4) : 'N/A';
         const accuracy =
           status.accuracy !== undefined
-            ? (status.accuracy * 100).toFixed(2) + "%"
-            : "N/A";
+            ? (status.accuracy * 100).toFixed(2) + '%'
+            : 'N/A';
 
         // Zeige Status in der gleichen Zeile an (überschreibt vorherige)
         process.stdout.write(
@@ -575,8 +567,8 @@ export class SimpleCliService {
    */
   private async handlePortfolioCreateCommand(name: string): Promise<void> {
     if (!name) {
-      console.log("❌ Portfolio-Name ist erforderlich");
-      console.log("💡 Verwendung: portfolio-create <NAME>");
+      console.log('❌ Portfolio-Name ist erforderlich');
+      console.log('💡 Verwendung: portfolio-create <NAME>');
       return;
     }
 
@@ -585,15 +577,15 @@ export class SimpleCliService {
         name,
         10000,
       ); // Default: $10,000
-      console.log("✅ Portfolio erstellt:");
+      console.log('✅ Portfolio erstellt:');
       console.log(`📊 Name: ${portfolio.name}`);
       console.log(
         `💰 Startkapital: $${(portfolio.initialValue || 0).toFixed(2)}`,
       );
       console.log(`🆔 ID: ${portfolio.id}`);
     } catch (error) {
-      console.log("❌ Fehler beim Erstellen des Portfolios");
-      this.logger.error("Fehler beim Erstellen des Portfolios", error);
+      console.log('❌ Fehler beim Erstellen des Portfolios');
+      this.logger.error('Fehler beim Erstellen des Portfolios', error);
     }
   }
 
@@ -602,15 +594,15 @@ export class SimpleCliService {
       const portfolios = await this.portfolioService.getAllPortfolios();
 
       if (portfolios.length === 0) {
-        console.log("📋 Keine Portfolios gefunden");
+        console.log('📋 Keine Portfolios gefunden');
         console.log(
-          "💡 Erstellen Sie ein Portfolio mit: portfolio-create <NAME>",
+          '💡 Erstellen Sie ein Portfolio mit: portfolio-create <NAME>',
         );
         return;
       }
 
-      console.log("📋 Ihre Portfolios:");
-      console.log("===================");
+      console.log('📋 Ihre Portfolios:');
+      console.log('===================');
 
       for (const portfolio of portfolios) {
         const metrics =
@@ -628,11 +620,11 @@ export class SimpleCliService {
         console.log(
           `   📅 Erstellt: ${portfolio.createdAt.toLocaleDateString()}`,
         );
-        console.log("");
+        console.log('');
       }
     } catch (error) {
-      console.log("❌ Fehler beim Abrufen der Portfolios");
-      this.logger.error("Fehler beim Abrufen der Portfolios", error);
+      console.log('❌ Fehler beim Abrufen der Portfolios');
+      this.logger.error('Fehler beim Abrufen der Portfolios', error);
     }
   }
 
@@ -642,9 +634,9 @@ export class SimpleCliService {
     quantity: number,
   ): Promise<void> {
     if (!portfolioId || !ticker || !quantity) {
-      console.log("❌ Portfolio-ID, Ticker und Anzahl sind erforderlich");
+      console.log('❌ Portfolio-ID, Ticker und Anzahl sind erforderlich');
       console.log(
-        "💡 Verwendung: portfolio-add <PORTFOLIO_ID> <TICKER> <QUANTITY>",
+        '💡 Verwendung: portfolio-add <PORTFOLIO_ID> <TICKER> <QUANTITY>',
       );
       return;
     }
@@ -666,7 +658,7 @@ export class SimpleCliService {
       // Aktuellen Preis abrufen
       const latestData = await this.prismaService.historicalData.findFirst({
         where: { stockId: stock.id },
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
       });
 
       if (!latestData) {
@@ -676,14 +668,14 @@ export class SimpleCliService {
         return;
       }
 
-      const position = await this.portfolioService.addPosition(
+      await this.portfolioService.addPosition(
         portfolioId,
         ticker.toUpperCase(),
         quantity,
         latestData.close,
       );
 
-      console.log("✅ Position hinzugefügt:");
+      console.log('✅ Position hinzugefügt:');
       console.log(`📊 Portfolio: ${portfolioId.substring(0, 8)}...`);
       console.log(
         `📈 ${ticker.toUpperCase()}: ${quantity} Aktien @ $${latestData.close.toFixed(2)}`,
@@ -692,8 +684,8 @@ export class SimpleCliService {
         `💰 Gesamtwert: $${(quantity * latestData.close).toFixed(2)}`,
       );
     } catch (error) {
-      console.log("❌ Fehler beim Hinzufügen der Position");
-      this.logger.error("Fehler beim Hinzufügen der Position", error);
+      console.log('❌ Fehler beim Hinzufügen der Position');
+      this.logger.error('Fehler beim Hinzufügen der Position', error);
     }
   }
 
@@ -702,8 +694,8 @@ export class SimpleCliService {
     ticker: string,
   ): Promise<void> {
     if (!portfolioId || !ticker) {
-      console.log("❌ Portfolio-ID und Ticker sind erforderlich");
-      console.log("💡 Verwendung: portfolio-remove <PORTFOLIO_ID> <TICKER>");
+      console.log('❌ Portfolio-ID und Ticker sind erforderlich');
+      console.log('💡 Verwendung: portfolio-remove <PORTFOLIO_ID> <TICKER>');
       return;
     }
 
@@ -712,12 +704,12 @@ export class SimpleCliService {
         portfolioId,
         ticker.toUpperCase(),
       );
-      console.log("✅ Position entfernt:");
+      console.log('✅ Position entfernt:');
       console.log(`📊 Portfolio: ${portfolioId.substring(0, 8)}...`);
       console.log(`❌ ${ticker.toUpperCase()} Position geschlossen`);
     } catch (error) {
-      console.log("❌ Fehler beim Entfernen der Position");
-      this.logger.error("Fehler beim Entfernen der Position", error);
+      console.log('❌ Fehler beim Entfernen der Position');
+      this.logger.error('Fehler beim Entfernen der Position', error);
     }
   }
 
@@ -725,15 +717,15 @@ export class SimpleCliService {
     portfolioId: string,
   ): Promise<void> {
     if (!portfolioId) {
-      console.log("❌ Portfolio-ID ist erforderlich");
-      console.log("💡 Verwendung: portfolio-analyze <PORTFOLIO_ID>");
+      console.log('❌ Portfolio-ID ist erforderlich');
+      console.log('💡 Verwendung: portfolio-analyze <PORTFOLIO_ID>');
       return;
     }
 
     try {
       const portfolio = await this.portfolioService.getPortfolio(portfolioId);
       if (!portfolio) {
-        console.log("❌ Portfolio nicht gefunden");
+        console.log('❌ Portfolio nicht gefunden');
         return;
       }
 
@@ -758,10 +750,10 @@ export class SimpleCliService {
         );
 
       console.log(`📊 Portfolio-Analyse: ${portfolio.name}`);
-      console.log("========================================");
-      console.log("");
+      console.log('========================================');
+      console.log('');
 
-      console.log("💰 Performance-Metriken:");
+      console.log('💰 Performance-Metriken:');
       console.log(`   Gesamtwert: $${metrics.totalValue.toFixed(2)}`);
       console.log(
         `   Tagesrendite: ${(metrics.dailyReturn * 100).toFixed(2)}%`,
@@ -774,30 +766,30 @@ export class SimpleCliService {
         `   Max Drawdown: ${(metrics.maxDrawdown * 100).toFixed(2)}%`,
       );
       console.log(`   Volatilität: ${(metrics.volatility * 100).toFixed(2)}%`);
-      console.log("");
+      console.log('');
 
-      console.log("⚠️ Risiko-Bewertung:");
+      console.log('⚠️ Risiko-Bewertung:');
       console.log(`   Risiko-Level: ${riskAssessment.riskLevel}`);
       console.log(`   Risiko-Score: ${riskAssessment.riskScore}/100`);
-      console.log("");
+      console.log('');
 
       if (riskAssessment.alerts.length > 0) {
-        console.log("🚨 Risiko-Warnungen:");
-        riskAssessment.alerts.forEach((alert) => {
+        console.log('🚨 Risiko-Warnungen:');
+        riskAssessment.alerts.forEach(alert => {
           console.log(`   ${alert.severity}: ${alert.message}`);
         });
-        console.log("");
+        console.log('');
       }
 
       if (riskAssessment.recommendations.length > 0) {
-        console.log("💡 Empfehlungen:");
-        riskAssessment.recommendations.forEach((rec) => {
+        console.log('💡 Empfehlungen:');
+        riskAssessment.recommendations.forEach(rec => {
           console.log(`   • ${rec}`);
         });
       }
     } catch (error) {
-      console.log("❌ Fehler bei der Portfolio-Analyse");
-      this.logger.error("Fehler bei der Portfolio-Analyse", error);
+      console.log('❌ Fehler bei der Portfolio-Analyse');
+      this.logger.error('Fehler bei der Portfolio-Analyse', error);
     }
   }
 
@@ -807,10 +799,10 @@ export class SimpleCliService {
     endDate: string,
   ): Promise<void> {
     if (!strategy || !startDate || !endDate) {
-      console.log("❌ Strategie, Start- und Enddatum sind erforderlich");
-      console.log("💡 Verwendung: backtest <STRATEGY> <START_DATE> <END_DATE>");
-      console.log("💡 Beispiel: backtest rsi 2024-01-01 2024-12-31");
-      console.log("💡 Verfügbare Strategien: rsi, sma, macd");
+      console.log('❌ Strategie, Start- und Enddatum sind erforderlich');
+      console.log('💡 Verwendung: backtest <STRATEGY> <START_DATE> <END_DATE>');
+      console.log('💡 Beispiel: backtest rsi 2024-01-01 2024-12-31');
+      console.log('💡 Verfügbare Strategien: rsi, sma, macd');
       return;
     }
 
@@ -818,9 +810,9 @@ export class SimpleCliService {
       // Einfache vordefinierte Strategien
       const strategies: Record<string, any> = {
         rsi: {
-          name: "RSI Überverkauft/Überkauft",
-          buySignals: ["rsi_oversold"],
-          sellSignals: ["rsi_overbought"],
+          name: 'RSI Überverkauft/Überkauft',
+          buySignals: ['rsi_oversold'],
+          sellSignals: ['rsi_overbought'],
           riskManagement: {
             stopLoss: 5.0,
             takeProfit: 10.0,
@@ -828,9 +820,9 @@ export class SimpleCliService {
           },
         },
         sma: {
-          name: "Simple Moving Average Crossover",
-          buySignals: ["sma_bullish_cross"],
-          sellSignals: ["sma_bearish_cross"],
+          name: 'Simple Moving Average Crossover',
+          buySignals: ['sma_bullish_cross'],
+          sellSignals: ['sma_bearish_cross'],
           riskManagement: {
             stopLoss: 3.0,
             takeProfit: 8.0,
@@ -838,9 +830,9 @@ export class SimpleCliService {
           },
         },
         macd: {
-          name: "MACD Signal",
-          buySignals: ["macd_bullish"],
-          sellSignals: ["macd_bearish"],
+          name: 'MACD Signal',
+          buySignals: ['macd_bullish'],
+          sellSignals: ['macd_bearish'],
           riskManagement: {
             stopLoss: 4.0,
             takeProfit: 12.0,
@@ -852,7 +844,7 @@ export class SimpleCliService {
       const selectedStrategy = strategies[strategy.toLowerCase()];
       if (!selectedStrategy) {
         console.log(`❌ Unbekannte Strategie: ${strategy}`);
-        console.log("💡 Verfügbare Strategien: rsi, sma, macd");
+        console.log('💡 Verfügbare Strategien: rsi, sma, macd');
         return;
       }
 
@@ -878,7 +870,7 @@ export class SimpleCliService {
       console.log(`🔄 Starte Backtest für Strategie: ${selectedStrategy.name}`);
       console.log(`📅 Zeitraum: ${startDate} bis ${endDate}`);
       console.log(`💰 Startkapital: $${config.initialCapital.toFixed(2)}`);
-      console.log("");
+      console.log('');
 
       // Alle verfolgten Aktien für Backtest holen
       const stocks = await this.prismaService.stock.findMany({
@@ -886,12 +878,12 @@ export class SimpleCliService {
       });
 
       if (stocks.length === 0) {
-        console.log("❌ Keine Aktien verfügbar für Backtest");
+        console.log('❌ Keine Aktien verfügbar für Backtest');
         console.log("💡 Fügen Sie zuerst Aktien mit 'track <TICKER>' hinzu");
         return;
       }
 
-      const tickers = stocks.map((s) => s.ticker);
+      const tickers = stocks.map(s => s.ticker);
       const results = await this.backtestService.runBacktest({
         ...config,
         symbols: tickers,
@@ -900,12 +892,12 @@ export class SimpleCliService {
       // Das Ergebnis ist direkt ein BacktestResult Objekt, kein Array
       const result = results;
       if (!result) {
-        console.log("❌ Keine Backtest-Ergebnisse erhalten");
+        console.log('❌ Keine Backtest-Ergebnisse erhalten');
         return;
       }
 
-      console.log("📊 Backtest-Ergebnisse:");
-      console.log("========================");
+      console.log('📊 Backtest-Ergebnisse:');
+      console.log('========================');
       console.log(`📈 Endkapital: $${result.finalCapital.toFixed(2)}`);
       console.log(
         `💰 Gesamtrendite: ${(result.totalReturn * 100).toFixed(2)}%`,
@@ -921,22 +913,22 @@ export class SimpleCliService {
       console.log(`📊 Sharpe Ratio: ${result.sharpeRatio.toFixed(2)}`);
       console.log(`📈 Volatilität: ${(result.volatility * 100).toFixed(2)}%`);
     } catch (error) {
-      console.log("❌ Fehler beim Backtest");
-      this.logger.error("Fehler beim Backtest", error);
+      console.log('❌ Fehler beim Backtest');
+      this.logger.error('Fehler beim Backtest', error);
     }
   }
 
   private async handleRiskAnalysisCommand(portfolioId: string): Promise<void> {
     if (!portfolioId) {
-      console.log("❌ Portfolio-ID ist erforderlich");
-      console.log("💡 Verwendung: risk-analysis <PORTFOLIO_ID>");
+      console.log('❌ Portfolio-ID ist erforderlich');
+      console.log('💡 Verwendung: risk-analysis <PORTFOLIO_ID>');
       return;
     }
 
     try {
       const portfolio = await this.portfolioService.getPortfolio(portfolioId);
       if (!portfolio) {
-        console.log("❌ Portfolio nicht gefunden");
+        console.log('❌ Portfolio nicht gefunden');
         return;
       }
 
@@ -960,15 +952,15 @@ export class SimpleCliService {
         await this.riskManagementService.calculateRiskMetrics(portfolio);
 
       console.log(`⚠️ Risiko-Analyse: ${portfolio.name}`);
-      console.log("================================");
-      console.log("");
+      console.log('================================');
+      console.log('');
 
-      console.log("📊 Risiko-Übersicht:");
+      console.log('📊 Risiko-Übersicht:');
       console.log(`   Risiko-Level: ${riskAssessment.riskLevel}`);
       console.log(`   Risiko-Score: ${riskAssessment.riskScore}/100`);
-      console.log("");
+      console.log('');
 
-      console.log("📈 Risiko-Kennzahlen:");
+      console.log('📈 Risiko-Kennzahlen:');
       console.log(
         `   Portfolio-Risiko: ${((riskMetrics.portfolioRisk || 0) * 100).toFixed(2)}%`,
       );
@@ -992,34 +984,34 @@ export class SimpleCliService {
       console.log(
         `   Konzentrations-Risiko: ${(riskMetrics.concentrationRisk * 100).toFixed(2)}%`,
       );
-      console.log("");
+      console.log('');
 
       if (riskAssessment.alerts.length > 0) {
-        console.log("🚨 Aktive Risiko-Warnungen:");
-        riskAssessment.alerts.forEach((alert) => {
+        console.log('🚨 Aktive Risiko-Warnungen:');
+        riskAssessment.alerts.forEach(alert => {
           const icon =
-            alert.severity === "CRITICAL"
-              ? "🔴"
-              : alert.severity === "HIGH"
-                ? "🟠"
-                : "🟡";
+            alert.severity === 'CRITICAL'
+              ? '🔴'
+              : alert.severity === 'HIGH'
+                ? '🟠'
+                : '🟡';
           console.log(`   ${icon} ${alert.type}: ${alert.message}`);
           console.log(
             `      Wert: ${alert.value} | Grenzwert: ${alert.threshold}`,
           );
         });
-        console.log("");
+        console.log('');
       }
 
       if (riskAssessment.recommendations.length > 0) {
-        console.log("💡 Risiko-Management Empfehlungen:");
-        riskAssessment.recommendations.forEach((rec) => {
+        console.log('💡 Risiko-Management Empfehlungen:');
+        riskAssessment.recommendations.forEach(rec => {
           console.log(`   • ${rec}`);
         });
       }
     } catch (error) {
-      console.log("❌ Fehler bei der Risiko-Analyse");
-      this.logger.error("Fehler bei der Risiko-Analyse", error);
+      console.log('❌ Fehler bei der Risiko-Analyse');
+      this.logger.error('Fehler bei der Risiko-Analyse', error);
     }
   }
 
@@ -1027,16 +1019,16 @@ export class SimpleCliService {
    * Dashboard Command - Zeigt System-Übersicht
    */
   private async handleDashboardCommand(): Promise<void> {
-    console.log("🎯 KAIROS Dashboard");
-    console.log("===================");
-    console.log("");
+    console.log('🎯 KAIROS Dashboard');
+    console.log('===================');
+    console.log('');
 
     try {
       // System Status
-      console.log("🖥️ System Status:");
+      console.log('🖥️ System Status:');
       const trainingStatus = this.mlPredictionService.getTrainingStatus();
       if (trainingStatus.isTraining) {
-        console.log("   🟢 ML-Training läuft");
+        console.log('   🟢 ML-Training läuft');
         if (trainingStatus.currentEpoch && trainingStatus.totalEpochs) {
           const progress = (
             (trainingStatus.currentEpoch / trainingStatus.totalEpochs) *
@@ -1045,26 +1037,26 @@ export class SimpleCliService {
           console.log(`   📈 Fortschritt: ${progress}%`);
         }
       } else {
-        console.log("   🔴 ML-Training inaktiv");
+        console.log('   🔴 ML-Training inaktiv');
       }
       console.log(
-        `   🔄 Persistent Mode: ${this.persistentMode ? "Aktiv" : "Inaktiv"}`,
+        `   🔄 Persistent Mode: ${this.persistentMode ? 'Aktiv' : 'Inaktiv'}`,
       );
-      console.log("");
+      console.log('');
 
       // Verfolgte Aktien
       const stocks = await this.prismaService.stock.findMany();
       console.log(`📊 Verfolgte Aktien: ${stocks.length}`);
       if (stocks.length > 0) {
         const recentStocks = stocks.slice(0, 5);
-        recentStocks.forEach((stock) => {
+        recentStocks.forEach(stock => {
           console.log(`   📈 ${stock.ticker} - ${stock.name}`);
         });
         if (stocks.length > 5) {
           console.log(`   ... und ${stocks.length - 5} weitere`);
         }
       }
-      console.log("");
+      console.log('');
 
       // Portfolio-Übersicht
       const portfolios = await this.portfolioService.getAllPortfolios();
@@ -1087,33 +1079,33 @@ export class SimpleCliService {
           console.log(`   ... und ${portfolios.length - 3} weitere`);
         }
       }
-      console.log("");
+      console.log('');
 
       // Neueste Daten
       const latestData = await this.prismaService.historicalData.findFirst({
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
         include: { stock: true },
       });
 
       if (latestData) {
-        console.log("📅 Neueste Daten:");
+        console.log('📅 Neueste Daten:');
         console.log(
           `   📈 ${latestData.stock.ticker}: $${latestData.close.toFixed(2)}`,
         );
         console.log(`   🕐 ${latestData.timestamp.toLocaleDateString()}`);
       }
-      console.log("");
+      console.log('');
 
       // Schnelle Aktionen
-      console.log("🚀 Schnelle Aktionen:");
-      console.log("   • kairos track <TICKER> - Aktie hinzufügen");
-      console.log("   • kairos predict <TICKER> - Vorhersage erstellen");
-      console.log("   • kairos portfolio-create <NAME> - Portfolio erstellen");
-      console.log("   • kairos train-start - ML-Training starten");
-      console.log("   • kairos help - Alle Befehle anzeigen");
+      console.log('🚀 Schnelle Aktionen:');
+      console.log('   • kairos track <TICKER> - Aktie hinzufügen');
+      console.log('   • kairos predict <TICKER> - Vorhersage erstellen');
+      console.log('   • kairos portfolio-create <NAME> - Portfolio erstellen');
+      console.log('   • kairos train-start - ML-Training starten');
+      console.log('   • kairos help - Alle Befehle anzeigen');
     } catch (error) {
-      console.log("❌ Fehler beim Laden des Dashboards");
-      this.logger.error("Fehler beim Dashboard", error);
+      console.log('❌ Fehler beim Laden des Dashboards');
+      this.logger.error('Fehler beim Dashboard', error);
     }
   }
 
@@ -1121,30 +1113,30 @@ export class SimpleCliService {
    * Startet den Vollautomatik-Modus
    */
   private async handleAutomationStartCommand(): Promise<void> {
-    console.log("🤖 Starte Vollautomatik-Modus...");
+    console.log('🤖 Starte Vollautomatik-Modus...');
 
     try {
       if (this.automationService.isAutomationRunning()) {
-        console.log("⚠️  Vollautomatik läuft bereits!");
+        console.log('⚠️  Vollautomatik läuft bereits!');
         return;
       }
 
       await this.automationService.startAutomation();
-      console.log("✅ Vollautomatik-Modus erfolgreich gestartet!");
-      console.log("");
-      console.log("📋 Aktive Prozesse:");
-      console.log("   • 🔄 Datenerfassung (alle 5 Min)");
-      console.log("   • 📊 Technische Analyse (alle 15 Min)");
-      console.log("   • 🔮 ML-Vorhersagen (alle 30 Min)");
-      console.log("   • 💼 Portfolio-Management (alle 60 Min)");
-      console.log("   • ⚠️  Risikomanagement (alle 10 Min)");
-      console.log("   • 💓 System-Überwachung (alle 2 Min)");
-      console.log("");
+      console.log('✅ Vollautomatik-Modus erfolgreich gestartet!');
+      console.log('');
+      console.log('📋 Aktive Prozesse:');
+      console.log('   • 🔄 Datenerfassung (alle 5 Min)');
+      console.log('   • 📊 Technische Analyse (alle 15 Min)');
+      console.log('   • 🔮 ML-Vorhersagen (alle 30 Min)');
+      console.log('   • 💼 Portfolio-Management (alle 60 Min)');
+      console.log('   • ⚠️  Risikomanagement (alle 10 Min)');
+      console.log('   • 💓 System-Überwachung (alle 2 Min)');
+      console.log('');
       console.log("💡 Verwenden Sie 'automation-status' für Status-Updates");
       console.log("💡 Verwenden Sie 'automation-stop' zum Beenden");
     } catch (error) {
-      console.log("❌ Fehler beim Starten der Vollautomatik");
-      this.logger.error("Automation Start Error", error);
+      console.log('❌ Fehler beim Starten der Vollautomatik');
+      this.logger.error('Automation Start Error', error);
     }
   }
 
@@ -1152,19 +1144,19 @@ export class SimpleCliService {
    * Stoppt den Vollautomatik-Modus
    */
   private async handleAutomationStopCommand(): Promise<void> {
-    console.log("🛑 Stoppe Vollautomatik-Modus...");
+    console.log('🛑 Stoppe Vollautomatik-Modus...');
 
     try {
       if (!this.automationService.isAutomationRunning()) {
-        console.log("⚠️  Vollautomatik läuft derzeit nicht!");
+        console.log('⚠️  Vollautomatik läuft derzeit nicht!');
         return;
       }
 
       await this.automationService.stopAutomation();
-      console.log("✅ Vollautomatik-Modus erfolgreich gestoppt!");
+      console.log('✅ Vollautomatik-Modus erfolgreich gestoppt!');
     } catch (error) {
-      console.log("❌ Fehler beim Stoppen der Vollautomatik");
-      this.logger.error("Automation Stop Error", error);
+      console.log('❌ Fehler beim Stoppen der Vollautomatik');
+      this.logger.error('Automation Stop Error', error);
     }
   }
 
@@ -1172,8 +1164,8 @@ export class SimpleCliService {
    * Zeigt den Status der Vollautomatik
    */
   private async handleAutomationStatusCommand(): Promise<void> {
-    console.log("🤖 Vollautomatik-Status");
-    console.log("=======================");
+    console.log('🤖 Vollautomatik-Status');
+    console.log('=======================');
 
     try {
       const status = await this.automationService.getDetailedStatus();
@@ -1181,7 +1173,7 @@ export class SimpleCliService {
       const isRunning = this.automationService.isAutomationRunning();
 
       // Grundstatus
-      console.log(`📊 Status: ${isRunning ? "🟢 LÄUFT" : "🔴 GESTOPPT"}`);
+      console.log(`📊 Status: ${isRunning ? '🟢 LÄUFT' : '🔴 GESTOPPT'}`);
 
       if (automationStatus.startTime) {
         const uptime = Date.now() - automationStatus.startTime.getTime();
@@ -1202,21 +1194,21 @@ export class SimpleCliService {
         );
       }
 
-      console.log("");
-      console.log("📋 Komponenten-Status:");
+      console.log('');
+      console.log('📋 Komponenten-Status:');
 
       // Komponenten-Status
       Object.entries(automationStatus.components).forEach(
         ([component, info]: [string, any]) => {
           const statusIcon =
-            info.status === "active"
-              ? "🟡"
-              : info.status === "error"
-                ? "🔴"
-                : "🟢";
+            info.status === 'active'
+              ? '🟡'
+              : info.status === 'error'
+                ? '🔴'
+                : '🟢';
           const lastRun = info.lastRun
             ? info.lastRun.toLocaleTimeString()
-            : "Nie";
+            : 'Nie';
           console.log(
             `   ${statusIcon} ${component}: ${info.status.toUpperCase()} (Letzte Ausführung: ${lastRun})`,
           );
@@ -1226,8 +1218,8 @@ export class SimpleCliService {
         },
       );
 
-      console.log("");
-      console.log("📈 Performance:");
+      console.log('');
+      console.log('📈 Performance:');
       console.log(
         `   💾 RAM: ${automationStatus.performance.memoryUsageMB} MB`,
       );
@@ -1237,8 +1229,8 @@ export class SimpleCliService {
 
       // Konfiguration
       const config = this.automationService.getConfig();
-      console.log("");
-      console.log("⚙️  Konfiguration:");
+      console.log('');
+      console.log('⚙️  Konfiguration:');
       console.log(
         `   🔄 Datenerfassung: alle ${Math.round(config.dataIngestionIntervalMs / 60000)} Min`,
       );
@@ -1257,15 +1249,15 @@ export class SimpleCliService {
 
       // Fehler (nur die letzten 5)
       if (automationStatus.errors.length > 0) {
-        console.log("");
-        console.log("❌ Letzte Fehler:");
+        console.log('');
+        console.log('❌ Letzte Fehler:');
         automationStatus.errors.slice(-5).forEach((errorMsg: string) => {
           console.log(`   🔸 ${errorMsg}`);
         });
       }
     } catch (error) {
-      console.log("❌ Fehler beim Abrufen des Status");
-      this.logger.error("Automation Status Error", error);
+      console.log('❌ Fehler beim Abrufen des Status');
+      this.logger.error('Automation Status Error', error);
     }
   }
 
@@ -1273,16 +1265,16 @@ export class SimpleCliService {
    * Konfiguriert die Vollautomatik
    */
   private async handleAutomationConfigCommand(args: string[]): Promise<void> {
-    console.log("⚙️  Vollautomatik-Konfiguration");
-    console.log("===============================");
+    console.log('⚙️  Vollautomatik-Konfiguration');
+    console.log('===============================');
 
     try {
       if (args.length === 0) {
         // Zeige aktuelle Konfiguration
         const config = this.automationService.getConfig();
-        console.log("📋 Aktuelle Konfiguration:");
-        console.log("");
-        console.log("🔄 Intervalle (in Minuten):");
+        console.log('📋 Aktuelle Konfiguration:');
+        console.log('');
+        console.log('🔄 Intervalle (in Minuten):');
         console.log(
           `   Datenerfassung: ${Math.round(config.dataIngestionIntervalMs / 60000)}`,
         );
@@ -1301,19 +1293,19 @@ export class SimpleCliService {
         console.log(
           `   Gesundheitschecks: ${Math.round(config.healthCheckIntervalMs / 60000)}`,
         );
-        console.log("");
-        console.log("⚠️  Fehlerbehandlung:");
+        console.log('');
+        console.log('⚠️  Fehlerbehandlung:');
         console.log(`   Max. Wiederholungen: ${config.maxRetries}`);
         console.log(
           `   Wiederholungsverzögerung: ${Math.round(config.retryDelayMs / 1000)}s`,
         );
         console.log(
-          `   Stopp bei kritischen Fehlern: ${config.stopOnCriticalError ? "Ja" : "Nein"}`,
+          `   Stopp bei kritischen Fehlern: ${config.stopOnCriticalError ? 'Ja' : 'Nein'}`,
         );
-        console.log("");
-        console.log("🔔 Benachrichtigungen:");
+        console.log('');
+        console.log('🔔 Benachrichtigungen:');
         console.log(
-          `   Aktiviert: ${config.notifications.enabled ? "Ja" : "Nein"}`,
+          `   Aktiviert: ${config.notifications.enabled ? 'Ja' : 'Nein'}`,
         );
         console.log(
           `   Fehlerschwelle: ${config.notifications.errorThreshold}`,
@@ -1326,158 +1318,173 @@ export class SimpleCliService {
       const numValue = parseInt(value);
 
       if (isNaN(numValue)) {
-        console.log("❌ Ungültiger Wert - Zahlen erforderlich");
+        console.log('❌ Ungültiger Wert - Zahlen erforderlich');
         return;
       }
 
       const updates: any = {};
 
       switch (key) {
-        case "data-interval":
+        case 'data-interval':
           updates.dataIngestionIntervalMs = numValue * 60 * 1000;
           break;
-        case "analysis-interval":
+        case 'analysis-interval':
           updates.analysisIntervalMs = numValue * 60 * 1000;
           break;
-        case "prediction-interval":
+        case 'prediction-interval':
           updates.predictionIntervalMs = numValue * 60 * 1000;
           break;
-        case "portfolio-interval":
+        case 'portfolio-interval':
           updates.portfolioRebalanceIntervalMs = numValue * 60 * 1000;
           break;
-        case "risk-interval":
+        case 'risk-interval':
           updates.riskCheckIntervalMs = numValue * 60 * 1000;
           break;
-        case "health-interval":
+        case 'health-interval':
           updates.healthCheckIntervalMs = numValue * 60 * 1000;
           break;
-        case "max-retries":
+        case 'max-retries':
           updates.maxRetries = numValue;
           break;
         default:
-          console.log("❌ Unbekannter Parameter");
-          console.log("📋 Verfügbare Parameter:");
+          console.log('❌ Unbekannter Parameter');
+          console.log('📋 Verfügbare Parameter:');
           console.log(
-            "   data-interval, analysis-interval, prediction-interval",
+            '   data-interval, analysis-interval, prediction-interval',
           );
-          console.log("   portfolio-interval, risk-interval, health-interval");
-          console.log("   max-retries");
+          console.log('   portfolio-interval, risk-interval, health-interval');
+          console.log('   max-retries');
           return;
       }
 
       this.automationService.updateConfig(updates);
       console.log(
-        `✅ ${key} auf ${numValue}${key.includes("interval") ? " Minuten" : ""} gesetzt`,
+        `✅ ${key} auf ${numValue}${key.includes('interval') ? ' Minuten' : ''} gesetzt`,
       );
     } catch (error) {
-      console.log("❌ Fehler bei der Konfiguration");
-      this.logger.error("Automation Config Error", error);
+      console.log('❌ Fehler bei der Konfiguration');
+      this.logger.error('Automation Config Error', error);
     }
   }
 
   /**
    * Testet einen spezifischen Datenquellen-Provider
    */
-  private async handleTestProviderCommand(providerName?: string, ticker?: string): Promise<void> {
-    console.log("🧪 Provider-Test");
-    console.log("==================");
+  private async handleTestProviderCommand(
+    providerName?: string,
+    ticker?: string,
+  ): Promise<void> {
+    console.log('🧪 Provider-Test');
+    console.log('==================');
 
     if (!providerName) {
-      console.log("❌ Provider-Name erforderlich");
-      console.log("📋 Verfügbare Provider: alpha-vantage, polygon, finnhub, mock");
+      console.log('❌ Provider-Name erforderlich');
+      console.log(
+        '📋 Verfügbare Provider: alpha-vantage, polygon, finnhub, mock',
+      );
       return;
     }
 
     if (!ticker) {
-      ticker = "AAPL"; // Standardwert
+      ticker = 'AAPL'; // Standardwert
     }
 
     try {
       // Provider-spezifischer Test
-      let result = null;
-      
       switch (providerName.toLowerCase()) {
-        case "alpha-vantage":
+        case 'alpha-vantage':
           // Test Alpha Vantage direkt
           await this.testAlphaVantageProvider(ticker);
           break;
-        case "polygon":
+        case 'polygon':
           await this.testPolygonProvider(ticker);
           break;
-        case "finnhub":
+        case 'finnhub':
           await this.testFinnhubProvider(ticker);
           break;
-        case "mock":
+        case 'mock':
           await this.testMockProvider(ticker);
           break;
         default:
-          console.log("❌ Unbekannter Provider");
-          console.log("📋 Verfügbare Provider: alpha-vantage, polygon, finnhub, mock");
+          console.log('❌ Unbekannter Provider');
+          console.log(
+            '📋 Verfügbare Provider: alpha-vantage, polygon, finnhub, mock',
+          );
           return;
       }
-
     } catch (error) {
-      console.log(`❌ Fehler beim Testen von ${providerName}:`, (error as Error).message);
+      console.log(
+        `❌ Fehler beim Testen von ${providerName}:`,
+        (error as Error).message,
+      );
     }
   }
 
   private async testAlphaVantageProvider(ticker: string): Promise<void> {
     console.log(`🔍 Teste Alpha Vantage mit ${ticker}...`);
-    
+
     if (!process.env.ALPHA_VANTAGE_API_KEY) {
-      console.log("❌ Alpha Vantage API-Schlüssel nicht konfiguriert");
+      console.log('❌ Alpha Vantage API-Schlüssel nicht konfiguriert');
       return;
     }
 
     try {
       // Direkte API-Test-Implementierung wäre hier
       await this.dataIngestionService.fetchLatestDataForStock(ticker);
-      console.log("✅ Alpha Vantage Test erfolgreich");
+      console.log('✅ Alpha Vantage Test erfolgreich');
     } catch (error) {
-      console.log(`❌ Alpha Vantage Test fehlgeschlagen: ${(error as Error).message}`);
+      console.log(
+        `❌ Alpha Vantage Test fehlgeschlagen: ${(error as Error).message}`,
+      );
     }
   }
 
   private async testPolygonProvider(ticker: string): Promise<void> {
     console.log(`🔍 Teste Polygon.io mit ${ticker}...`);
-    
+
     if (!process.env.POLYGON_API_KEY) {
-      console.log("❌ Polygon API-Schlüssel nicht konfiguriert");
+      console.log('❌ Polygon API-Schlüssel nicht konfiguriert');
       return;
     }
 
     try {
       await this.dataIngestionService.fetchLatestDataForStock(ticker);
-      console.log("✅ Polygon Test erfolgreich");
+      console.log('✅ Polygon Test erfolgreich');
     } catch (error) {
-      console.log(`❌ Polygon Test fehlgeschlagen: ${(error as Error).message}`);
+      console.log(
+        `❌ Polygon Test fehlgeschlagen: ${(error as Error).message}`,
+      );
     }
   }
 
   private async testFinnhubProvider(ticker: string): Promise<void> {
     console.log(`🔍 Teste Finnhub mit ${ticker}...`);
-    
+
     if (!process.env.FINNHUB_API_KEY) {
-      console.log("❌ Finnhub API-Schlüssel nicht konfiguriert");
+      console.log('❌ Finnhub API-Schlüssel nicht konfiguriert');
       return;
     }
 
     try {
       await this.dataIngestionService.fetchLatestDataForStock(ticker);
-      console.log("✅ Finnhub Test erfolgreich");
+      console.log('✅ Finnhub Test erfolgreich');
     } catch (error) {
-      console.log(`❌ Finnhub Test fehlgeschlagen: ${(error as Error).message}`);
+      console.log(
+        `❌ Finnhub Test fehlgeschlagen: ${(error as Error).message}`,
+      );
     }
   }
 
   private async testMockProvider(ticker: string): Promise<void> {
     console.log(`🔍 Teste Mock Provider mit ${ticker}...`);
-    
+
     try {
       await this.dataIngestionService.fetchLatestDataForStock(ticker);
-      console.log("✅ Mock Provider Test erfolgreich");
+      console.log('✅ Mock Provider Test erfolgreich');
     } catch (error) {
-      console.log(`❌ Mock Provider Test fehlgeschlagen: ${(error as Error).message}`);
+      console.log(
+        `❌ Mock Provider Test fehlgeschlagen: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -1485,23 +1492,30 @@ export class SimpleCliService {
    * Zeigt den Status aller Provider an
    */
   private async handleProviderStatusCommand(): Promise<void> {
-    console.log("📊 Provider-Status");
-    console.log("===================");
+    console.log('📊 Provider-Status');
+    console.log('===================');
 
     // Simuliere Provider-Checks (in einer echten Implementierung würde man die Provider direkt testen)
     const providers = [
-      { name: "Alpha Vantage", configured: !!process.env.ALPHA_VANTAGE_API_KEY },
-      { name: "Polygon.io", configured: !!process.env.POLYGON_API_KEY },
-      { name: "Finnhub", configured: !!process.env.FINNHUB_API_KEY },
-      { name: "Mock Provider", configured: true }
+      {
+        name: 'Alpha Vantage',
+        configured: !!process.env.ALPHA_VANTAGE_API_KEY,
+      },
+      { name: 'Polygon.io', configured: !!process.env.POLYGON_API_KEY },
+      { name: 'Finnhub', configured: !!process.env.FINNHUB_API_KEY },
+      { name: 'Mock Provider', configured: true },
     ];
 
     for (const provider of providers) {
-      const status = provider.configured ? "✅ Konfiguriert" : "❌ Nicht konfiguriert";
+      const status = provider.configured
+        ? '✅ Konfiguriert'
+        : '❌ Nicht konfiguriert';
       console.log(`${provider.name}: ${status}`);
     }
 
-    console.log("");
-    console.log("💡 Hinweis: Verwenden Sie 'test-provider <name> <ticker>' um einen Provider zu testen");
+    console.log('');
+    console.log(
+      "💡 Hinweis: Verwenden Sie 'test-provider <name> <ticker>' um einen Provider zu testen",
+    );
   }
 }

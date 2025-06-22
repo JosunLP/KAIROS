@@ -108,7 +108,7 @@ export interface Portfolio {
 
 // Trading and Backtest related types
 export interface TradingSignal {
-  action: "BUY" | "SELL" | "HOLD";
+  action: 'BUY' | 'SELL' | 'HOLD';
   type: string; // Type of signal like "RSI_OVERSOLD", "MACD_BULLISH", etc.
   symbol: string;
   price: number;
@@ -123,7 +123,7 @@ export interface TradingSignal {
 export interface BacktestTrade {
   id: string;
   symbol: string;
-  type: "BUY" | "SELL";
+  type: 'BUY' | 'SELL';
   quantity: number;
   price: number;
   entryPrice?: number; // For backward compatibility
@@ -203,13 +203,13 @@ export interface RiskLimits {
 export interface RiskAlert {
   id: string;
   type:
-    | "POSITION_SIZE"
-    | "CONCENTRATION"
-    | "DRAWDOWN"
-    | "CORRELATION"
-    | "VOLATILITY"
-    | "LIQUIDITY";
-  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    | 'POSITION_SIZE'
+    | 'CONCENTRATION'
+    | 'DRAWDOWN'
+    | 'CORRELATION'
+    | 'VOLATILITY'
+    | 'LIQUIDITY';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   message: string;
   metric: string;
   currentValue: number;
@@ -231,7 +231,7 @@ export interface SectorExposure {
 export interface RiskAssessment {
   portfolioId: string;
   riskScore: number;
-  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   metrics: RiskMetrics;
   alerts: RiskAlert[];
   recommendations: string[];
@@ -245,7 +245,7 @@ export interface RiskAssessment {
 
 export interface MonitoringMetrics {
   timestamp: Date;
-  systemHealth: "healthy" | "warning" | "critical";
+  systemHealth: 'healthy' | 'warning' | 'critical';
   memoryUsage: number;
   cpuUsage: number;
   apiResponseTime: number;
@@ -255,8 +255,8 @@ export interface MonitoringMetrics {
 
 export interface Alert {
   id: string;
-  type: "system" | "portfolio" | "risk" | "performance";
-  severity: "info" | "warning" | "error" | "critical";
+  type: 'system' | 'portfolio' | 'risk' | 'performance';
+  severity: 'info' | 'warning' | 'error' | 'critical';
   message: string;
   timestamp: Date;
   resolved: boolean;
@@ -265,14 +265,14 @@ export interface Alert {
 
 // Additional interfaces for Risk Management
 export interface MarketSentiment {
-  overall: "bullish" | "bearish" | "neutral";
+  overall: 'bullish' | 'bearish' | 'neutral';
   vix: number;
   fearGreedIndex: number;
   timestamp: Date;
 }
 
 export interface SystemHealth {
-  status: "healthy" | "warning" | "critical";
+  status: 'healthy' | 'warning' | 'critical';
   uptime: number;
   memoryUsage: number;
   cpuUsage: number;
@@ -282,8 +282,8 @@ export interface SystemHealth {
 
 export interface SystemAlert {
   id: string;
-  type: "system" | "portfolio" | "risk" | "performance";
-  severity: "info" | "warning" | "error" | "critical";
+  type: 'system' | 'portfolio' | 'risk' | 'performance';
+  severity: 'info' | 'warning' | 'error' | 'critical';
   message: string;
   timestamp: Date;
   resolved: boolean;
@@ -297,5 +297,5 @@ export interface TrainingStatus {
   loss: number;
   accuracy: number;
   estimatedTimeRemaining: number;
-  status: "IDLE" | "TRAINING" | "COMPLETE" | "ERROR";
+  status: 'IDLE' | 'TRAINING' | 'COMPLETE' | 'ERROR';
 }

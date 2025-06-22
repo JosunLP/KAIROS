@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Docker Compose Konfiguration für die Entwicklung
 # Verwendung: docker-compose -f docker-compose.dev.yml up
 
@@ -16,7 +14,7 @@ services:
       - postgres_dev_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - "5433:5432"
+      - '5433:5432'
     networks:
       - kairos_dev_network
     restart: unless-stopped
@@ -35,7 +33,7 @@ services:
       - ./ml-service:/app
       - ml_models_dev:/app/models
     ports:
-      - "8081:8081"
+      - '8081:8081'
     networks:
       - kairos_dev_network
     restart: unless-stopped
@@ -56,10 +54,13 @@ services:
     volumes:
       - ./src:/app/src
       - ./prisma:/app/prisma
-      - ./package*.json:/app/
-      - ./tsconfig*.json:/app/
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.build.json:/app/tsconfig.build.json
+      - ./nest-cli.json:/app/nest-cli.json
     ports:
-      - "3000:3000"
+      - '3000:3000'
     networks:
       - kairos_dev_network
     depends_on:
@@ -78,7 +79,7 @@ services:
     volumes:
       - ./prisma:/app/prisma
     ports:
-      - "5556:5555"
+      - '5556:5555'
     networks:
       - kairos_dev_network
     depends_on:

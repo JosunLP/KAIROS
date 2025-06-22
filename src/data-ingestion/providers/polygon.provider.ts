@@ -1,31 +1,34 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import axios, { AxiosInstance } from "axios";
-import axiosRetry from "axios-retry";
-import { DataProvider, MarketDataPoint } from "../data-ingestion.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import axios, { AxiosInstance } from 'axios';
+import axiosRetry from 'axios-retry';
+import { DataProvider, MarketDataPoint } from '../data-ingestion.service';
 
 @Injectable()
 export class PolygonProvider implements DataProvider {
-  public readonly name = "Polygon.io";
+  public readonly name = 'Polygon.io';
   private readonly logger = new Logger(PolygonProvider.name);
   private readonly httpClient: AxiosInstance;
   private readonly apiKey: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.apiKey = this.configService.get<string>("POLYGON_API_KEY", "");
-    
+    this.apiKey = this.configService.get<string>('POLYGON_API_KEY', '');
+
     this.httpClient = axios.create({
-      baseURL: "https://api.polygon.io",
+      baseURL: 'https://api.polygon.io',
       timeout: 30000,
     });
 
     // Retry-Mechanismus konfigurieren
     axiosRetry(this.httpClient, {
-      retries: this.configService.get<number>("API_RETRY_ATTEMPTS", 3),
-      retryDelay: (retryCount) => {
-        return retryCount * this.configService.get<number>("API_RETRY_DELAY_MS", 1000);
+      retries: this.configService.get<number>('API_RETRY_ATTEMPTS', 3),
+      retryDelay: retryCount => {
+        return (
+          retryCount *
+          this.configService.get<number>('API_RETRY_DELAY_MS', 1000)
+        );
       },
-      retryCondition: (error) => {
+      retryCondition: error => {
         return (
           axiosRetry.isNetworkOrIdempotentRequestError(error) ||
           error.response?.status === 429
@@ -35,7 +38,7 @@ export class PolygonProvider implements DataProvider {
   }
 
   isConfigured(): boolean {
-    return !!this.apiKey && this.apiKey !== "";
+    return !!this.apiKey && this.apiKey !== '';
   }
 
   async fetchHistoricalData(
@@ -43,7 +46,9 @@ export class PolygonProvider implements DataProvider {
     days: number = 365,
   ): Promise<MarketDataPoint[]> {
     if (!this.isConfigured()) {
-      this.logger.warn("Polygon.io Provider nicht konfiguriert - API-Schlüssel fehlt");
+      this.logger.warn(
+        'Polygon.io Provider nicht konfiguriert - API-Schlüssel fehlt',
+      );
       return [];
     }
 
@@ -55,7 +60,9 @@ export class PolygonProvider implements DataProvider {
       const fromDateStr = fromDate.toISOString().split('T')[0];
       const toDateStr = toDate.toISOString().split('T')[0];
 
-      this.logger.debug(`Hole Polygon-Daten für ${ticker} von ${fromDateStr} bis ${toDateStr}`);
+      this.logger.debug(
+        `Hole Polygon-Daten für ${ticker} von ${fromDateStr} bis ${toDateStr}`,
+      );
 
       const response = await this.httpClient.get(
         `/v2/aggs/ticker/${ticker}/range/1/day/${fromDateStr}/${toDateStr}`,
@@ -64,15 +71,17 @@ export class PolygonProvider implements DataProvider {
             apikey: this.apiKey,
             adjusted: true,
             sort: 'asc',
-            limit: 50000
-          }
-        }
+            limit: 50000,
+          },
+        },
       );
 
       const data = response.data;
 
-      if (data.status !== "OK") {
-        throw new Error(`Polygon API-Fehler: ${data.error || 'Unbekannter Fehler'}`);
+      if (data.status !== 'OK') {
+        throw new Error(
+          `Polygon API-Fehler: ${data.error || 'Unbekannter Fehler'}`,
+        );
       }
 
       if (!data.results || data.results.length === 0) {
@@ -89,18 +98,24 @@ export class PolygonProvider implements DataProvider {
         volume: item.v,
       }));
 
-      this.logger.debug(`${dataPoints.length} Datenpunkte für ${ticker} von Polygon abgerufen`);
+      this.logger.debug(
+        `${dataPoints.length} Datenpunkte für ${ticker} von Polygon abgerufen`,
+      );
       return dataPoints;
-
     } catch (error) {
-      this.logger.error(`Fehler beim Abrufen historischer Daten für ${ticker} von Polygon`, error);
+      this.logger.error(
+        `Fehler beim Abrufen historischer Daten für ${ticker} von Polygon`,
+        error,
+      );
       throw error;
     }
   }
 
   async fetchLatestData(ticker: string): Promise<MarketDataPoint | null> {
     if (!this.isConfigured()) {
-      this.logger.warn("Polygon.io Provider nicht konfiguriert - API-Schlüssel fehlt");
+      this.logger.warn(
+        'Polygon.io Provider nicht konfiguriert - API-Schlüssel fehlt',
+      );
       return null;
     }
 
@@ -114,15 +129,17 @@ export class PolygonProvider implements DataProvider {
         {
           params: {
             apikey: this.apiKey,
-            adjusted: true
-          }
-        }
+            adjusted: true,
+          },
+        },
       );
 
       const data = response.data;
 
-      if (data.status !== "OK") {
-        this.logger.warn(`Keine aktuellen Daten für ${ticker} von Polygon: ${data.error || 'Unbekannter Fehler'}`);
+      if (data.status !== 'OK') {
+        this.logger.warn(
+          `Keine aktuellen Daten für ${ticker} von Polygon: ${data.error || 'Unbekannter Fehler'}`,
+        );
         return null;
       }
 
@@ -137,9 +154,11 @@ export class PolygonProvider implements DataProvider {
 
       this.logger.debug(`Aktuelle Daten für ${ticker} von Polygon abgerufen`);
       return point;
-
     } catch (error) {
-      this.logger.error(`Fehler beim Abrufen aktueller Daten für ${ticker} von Polygon`, error);
+      this.logger.error(
+        `Fehler beim Abrufen aktueller Daten für ${ticker} von Polygon`,
+        error,
+      );
       throw error;
     }
   }

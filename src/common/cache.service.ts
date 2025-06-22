@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
-import { ConfigService } from "../config/config.service";
-import { LoggerService } from "./logger.service";
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '../config/config.service';
+import { LoggerService } from './logger.service';
 
 export interface CacheEntry<T = any> {
   key: string;
@@ -48,7 +48,7 @@ export class CacheService {
   ) {
     if (this.config.cacheEnabled) {
       this.startCleanupTimer();
-      this.logger.info("Cache service initialized", "CACHE");
+      this.logger.info('Cache service initialized', 'CACHE');
     }
   }
 
@@ -64,7 +64,7 @@ export class CacheService {
 
     if (!entry) {
       this.stats.misses++;
-      this.logger.debug(`Cache miss: ${key}`, "CACHE");
+      this.logger.debug(`Cache miss: ${key}`, 'CACHE');
       return null;
     }
 
@@ -75,7 +75,7 @@ export class CacheService {
     if (ageInSeconds > entry.ttl) {
       this.cache.delete(key);
       this.stats.misses++;
-      this.logger.debug(`Cache expired: ${key}`, "CACHE");
+      this.logger.debug(`Cache expired: ${key}`, 'CACHE');
       return null;
     }
 
@@ -84,7 +84,7 @@ export class CacheService {
     entry.lastAccessed = now;
     this.stats.hits++;
 
-    this.logger.debug(`Cache hit: ${key}`, "CACHE");
+    this.logger.debug(`Cache hit: ${key}`, 'CACHE');
     return entry.value;
   }
 
@@ -122,7 +122,7 @@ export class CacheService {
     this.cache.set(key, entry);
     this.stats.sets++;
 
-    this.logger.debug(`Cache set: ${key} (TTL: ${ttl}s)`, "CACHE");
+    this.logger.debug(`Cache set: ${key} (TTL: ${ttl}s)`, 'CACHE');
     return true;
   }
 
@@ -167,7 +167,7 @@ export class CacheService {
     const success = this.cache.delete(key);
     if (success) {
       this.stats.deletes++;
-      this.logger.debug(`Cache delete: ${key}`, "CACHE");
+      this.logger.debug(`Cache delete: ${key}`, 'CACHE');
     }
     return success;
   }
@@ -189,7 +189,7 @@ export class CacheService {
    * Alle Werte mit Präfix löschen
    */
   deleteByPrefix(prefix: string): number {
-    const keysToDelete = Array.from(this.cache.keys()).filter((key) =>
+    const keysToDelete = Array.from(this.cache.keys()).filter(key =>
       key.startsWith(prefix),
     );
     return this.deleteMultiple(keysToDelete);
@@ -201,7 +201,7 @@ export class CacheService {
   clear(): void {
     const size = this.cache.size;
     this.cache.clear();
-    this.logger.info(`Cache cleared: ${size} entries removed`, "CACHE");
+    this.logger.info(`Cache cleared: ${size} entries removed`, 'CACHE');
   }
 
   /**
@@ -232,7 +232,7 @@ export class CacheService {
    */
   keys(prefix?: string): string[] {
     const allKeys = Array.from(this.cache.keys());
-    return prefix ? allKeys.filter((key) => key.startsWith(prefix)) : allKeys;
+    return prefix ? allKeys.filter(key => key.startsWith(prefix)) : allKeys;
   }
 
   /**
@@ -263,16 +263,16 @@ export class CacheService {
     const topKeys = entries
       .sort((a, b) => b.accessCount - a.accessCount)
       .slice(0, 10)
-      .map((entry) => ({ key: entry.key, accessCount: entry.accessCount }));
+      .map(entry => ({ key: entry.key, accessCount: entry.accessCount }));
 
-    const timestamps = entries.map((e) => e.timestamp);
+    const timestamps = entries.map(e => e.timestamp);
     const oldestEntry =
       timestamps.length > 0
-        ? new Date(Math.min(...timestamps.map((d) => d.getTime())))
+        ? new Date(Math.min(...timestamps.map(d => d.getTime())))
         : undefined;
     const newestEntry =
       timestamps.length > 0
-        ? new Date(Math.max(...timestamps.map((d) => d.getTime())))
+        ? new Date(Math.max(...timestamps.map(d => d.getTime())))
         : undefined;
 
     return {
@@ -298,7 +298,7 @@ export class CacheService {
       sets: 0,
       deletes: 0,
     };
-    this.logger.info("Cache statistics reset", "CACHE");
+    this.logger.info('Cache statistics reset', 'CACHE');
   }
 
   /**
@@ -330,7 +330,7 @@ export class CacheService {
   cacheTickerData(
     ticker: string,
     data: any,
-    dataType: string = "quotes",
+    dataType: string = 'quotes',
   ): void {
     const key = `ticker:${ticker}:${dataType}`;
     this.set(key, data, {
@@ -344,7 +344,7 @@ export class CacheService {
    */
   getTickerData<T = any>(
     ticker: string,
-    dataType: string = "quotes",
+    dataType: string = 'quotes',
   ): T | null {
     const key = `ticker:${ticker}:${dataType}`;
     return this.get<T>(key);
@@ -378,7 +378,7 @@ export class CacheService {
   cacheAnalysis(
     ticker: string,
     analysis: any,
-    analysisType: string = "technical",
+    analysisType: string = 'technical',
   ): void {
     const key = `analysis:${ticker}:${analysisType}`;
     this.set(key, analysis, {
@@ -403,7 +403,7 @@ export class CacheService {
 
     if (lruKey) {
       this.cache.delete(lruKey);
-      this.logger.debug(`Cache evicted (LRU): ${lruKey}`, "CACHE");
+      this.logger.debug(`Cache evicted (LRU): ${lruKey}`, 'CACHE');
     }
   }
 
@@ -425,7 +425,7 @@ export class CacheService {
     if (cleanedCount > 0) {
       this.logger.debug(
         `Cache cleanup: ${cleanedCount} expired entries removed`,
-        "CACHE",
+        'CACHE',
       );
     }
   }
@@ -459,7 +459,7 @@ export class CacheService {
   onModuleDestroy(): void {
     this.stopCleanupTimer();
     this.clear();
-    this.logger.info("Cache service stopped", "CACHE");
+    this.logger.info('Cache service stopped', 'CACHE');
   }
 
   /**
@@ -468,7 +468,7 @@ export class CacheService {
   async warmup(tickers: string[]): Promise<void> {
     this.logger.info(
       `Starting cache warmup for ${tickers.length} tickers`,
-      "CACHE",
+      'CACHE',
     );
 
     const startTime = Date.now();
@@ -489,7 +489,7 @@ export class CacheService {
         this.cacheTickerData(ticker, placeholderData);
         warmedCount++;
       } catch (error) {
-        this.logger.warn(`Cache warmup failed for ${ticker}`, "CACHE", {
+        this.logger.warn(`Cache warmup failed for ${ticker}`, 'CACHE', {
           error,
         });
       }
@@ -498,7 +498,7 @@ export class CacheService {
     const duration = Date.now() - startTime;
     this.logger.info(
       `Cache warmup completed: ${warmedCount}/${tickers.length} tickers in ${duration}ms`,
-      "CACHE",
+      'CACHE',
     );
   }
 

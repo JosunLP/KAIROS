@@ -1,6 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { PrismaService } from "../persistence/prisma.service";
-import * as TI from "technicalindicators";
+import { Injectable, Logger } from '@nestjs/common';
+import * as TI from 'technicalindicators';
+import { PrismaService } from '../persistence/prisma.service';
 
 export interface TechnicalIndicators {
   sma20?: number;
@@ -47,10 +47,10 @@ export class AnalysisEngineService {
         }
       }
 
-      this.logger.log("Technische Indikatoren erfolgreich berechnet");
+      this.logger.log('Technische Indikatoren erfolgreich berechnet');
     } catch (error) {
       this.logger.error(
-        "Fehler bei der Berechnung der technischen Indikatoren",
+        'Fehler bei der Berechnung der technischen Indikatoren',
         error,
       );
       throw error;
@@ -65,7 +65,7 @@ export class AnalysisEngineService {
       // Hole die letzten 200 Datenpunkte (ausreichend für alle Indikatoren)
       const historicalData = await this.prisma.historicalData.findMany({
         where: { stockId },
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
         take: 200,
       });
 
@@ -80,10 +80,10 @@ export class AnalysisEngineService {
       historicalData.reverse();
 
       // Extrahiere Preis-Arrays
-      const closes = historicalData.map((d) => d.close);
-      const highs = historicalData.map((d) => d.high);
-      const lows = historicalData.map((d) => d.low);
-      const volumes = historicalData.map((d) => Number(d.volume)); // Berechne alle Indikatoren
+      const closes = historicalData.map(d => d.close);
+      const highs = historicalData.map(d => d.high);
+      const lows = historicalData.map(d => d.low);
+      const volumes = historicalData.map(d => Number(d.volume)); // Berechne alle Indikatoren
       const indicators = this.calculateAllIndicatorsRobust(
         closes,
         highs,
@@ -134,7 +134,7 @@ export class AnalysisEngineService {
           // ADX liefert ein Objekt zurück, wir speichern nur den ADX-Wert
           const adxValue = indicators.adx[indicatorIndex];
           updateData.adx =
-            typeof adxValue === "object" ? adxValue.adx : adxValue;
+            typeof adxValue === 'object' ? adxValue.adx : adxValue;
         }
         if (indicators.cci && indicators.cci[indicatorIndex] !== undefined) {
           updateData.cci = indicators.cci[indicatorIndex];
@@ -174,14 +174,14 @@ export class AnalysisEngineService {
     closes: number[],
     highs: number[],
     lows: number[],
-    volumes: number[],
+    _volumes: number[],
   ): boolean {
     if (!closes || closes.length === 0) {
-      throw new Error("Schlusskurse sind erforderlich");
+      throw new Error('Schlusskurse sind erforderlich');
     }
 
     if (highs.length !== closes.length || lows.length !== closes.length) {
-      throw new Error("Inkonsistente Datenlängen (High/Low/Close)");
+      throw new Error('Inkonsistente Datenlängen (High/Low/Close)');
     }
 
     // Prüfe auf ungültige Werte
@@ -211,7 +211,7 @@ export class AnalysisEngineService {
     volumes: number[];
   } {
     const sanitized = data.filter(
-      (d) =>
+      d =>
         d.close > 0 &&
         d.high > 0 &&
         d.low > 0 &&
@@ -223,10 +223,10 @@ export class AnalysisEngineService {
     );
 
     return {
-      closes: sanitized.map((d) => Number(d.close)),
-      highs: sanitized.map((d) => Number(d.high)),
-      lows: sanitized.map((d) => Number(d.low)),
-      volumes: sanitized.map((d) => Number(d.volume)),
+      closes: sanitized.map(d => Number(d.close)),
+      highs: sanitized.map(d => Number(d.high)),
+      lows: sanitized.map(d => Number(d.low)),
+      volumes: sanitized.map(d => Number(d.volume)),
     };
   }
 
@@ -238,7 +238,7 @@ export class AnalysisEngineService {
       // Hole die letzten 200 Datenpunkte (ausreichend für alle Indikatoren)
       const rawData = await this.prisma.historicalData.findMany({
         where: { stockId },
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
         take: 200,
       });
 
@@ -301,7 +301,7 @@ export class AnalysisEngineService {
         try {
           indicators.sma20 = TI.SMA.calculate({ period: 20, values: closes });
         } catch (error) {
-          this.logger.warn("Fehler bei SMA20-Berechnung:", error);
+          this.logger.warn('Fehler bei SMA20-Berechnung:', error);
         }
       }
 
@@ -310,7 +310,7 @@ export class AnalysisEngineService {
         try {
           indicators.ema50 = TI.EMA.calculate({ period: 50, values: closes });
         } catch (error) {
-          this.logger.warn("Fehler bei EMA50-Berechnung:", error);
+          this.logger.warn('Fehler bei EMA50-Berechnung:', error);
         }
       }
 
@@ -319,7 +319,7 @@ export class AnalysisEngineService {
         try {
           indicators.rsi14 = TI.RSI.calculate({ period: 14, values: closes });
         } catch (error) {
-          this.logger.warn("Fehler bei RSI14-Berechnung:", error);
+          this.logger.warn('Fehler bei RSI14-Berechnung:', error);
         }
       }
 
@@ -335,7 +335,7 @@ export class AnalysisEngineService {
             SimpleMASignal: false,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei MACD-Berechnung:", error);
+          this.logger.warn('Fehler bei MACD-Berechnung:', error);
         }
       }
 
@@ -348,7 +348,7 @@ export class AnalysisEngineService {
             values: closes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei Bollinger Bands-Berechnung:", error);
+          this.logger.warn('Fehler bei Bollinger Bands-Berechnung:', error);
         }
       }
 
@@ -362,7 +362,7 @@ export class AnalysisEngineService {
             close: closes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei ADX-Berechnung:", error);
+          this.logger.warn('Fehler bei ADX-Berechnung:', error);
         }
       }
 
@@ -376,7 +376,7 @@ export class AnalysisEngineService {
             close: closes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei CCI-Berechnung:", error);
+          this.logger.warn('Fehler bei CCI-Berechnung:', error);
         }
       }
 
@@ -390,7 +390,7 @@ export class AnalysisEngineService {
             close: closes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei Williams %R-Berechnung:", error);
+          this.logger.warn('Fehler bei Williams %R-Berechnung:', error);
         }
       }
 
@@ -405,7 +405,7 @@ export class AnalysisEngineService {
 
       return indicators;
     } catch (error) {
-      this.logger.error("Fehler bei der robusten Indikator-Berechnung:", error);
+      this.logger.error('Fehler bei der robusten Indikator-Berechnung:', error);
       return {};
     }
   }
@@ -432,7 +432,7 @@ export class AnalysisEngineService {
             close: closes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei ATR-Berechnung:", error);
+          this.logger.warn('Fehler bei ATR-Berechnung:', error);
         }
       }
 
@@ -444,7 +444,7 @@ export class AnalysisEngineService {
             volume: volumes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei OBV-Berechnung:", error);
+          this.logger.warn('Fehler bei OBV-Berechnung:', error);
         }
       }
 
@@ -459,7 +459,7 @@ export class AnalysisEngineService {
             volume: volumes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei MFI-Berechnung:", error);
+          this.logger.warn('Fehler bei MFI-Berechnung:', error);
         }
       } // Stochastic Oscillator
       if (closes.length >= 14) {
@@ -472,7 +472,7 @@ export class AnalysisEngineService {
             close: closes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei Stochastic-Berechnung:", error);
+          this.logger.warn('Fehler bei Stochastic-Berechnung:', error);
         }
       }
 
@@ -485,7 +485,7 @@ export class AnalysisEngineService {
             values: closes,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei TRIX-Berechnung:", error);
+          this.logger.warn('Fehler bei TRIX-Berechnung:', error);
         }
       }
 
@@ -494,7 +494,7 @@ export class AnalysisEngineService {
         try {
           indicators.vwap = this.calculateVWAP(closes, highs, lows, volumes);
         } catch (error) {
-          this.logger.warn("Fehler bei VWAP-Berechnung:", error);
+          this.logger.warn('Fehler bei VWAP-Berechnung:', error);
         }
       }
 
@@ -503,7 +503,7 @@ export class AnalysisEngineService {
         try {
           indicators.rsi9 = TI.RSI.calculate({ period: 9, values: closes });
         } catch (error) {
-          this.logger.warn("Fehler bei RSI9-Berechnung:", error);
+          this.logger.warn('Fehler bei RSI9-Berechnung:', error);
         }
       }
 
@@ -511,7 +511,7 @@ export class AnalysisEngineService {
         try {
           indicators.rsi21 = TI.RSI.calculate({ period: 21, values: closes });
         } catch (error) {
-          this.logger.warn("Fehler bei RSI21-Berechnung:", error);
+          this.logger.warn('Fehler bei RSI21-Berechnung:', error);
         }
       }
 
@@ -520,7 +520,7 @@ export class AnalysisEngineService {
         try {
           indicators.ema9 = TI.EMA.calculate({ period: 9, values: closes });
         } catch (error) {
-          this.logger.warn("Fehler bei EMA9-Berechnung:", error);
+          this.logger.warn('Fehler bei EMA9-Berechnung:', error);
         }
       }
 
@@ -528,7 +528,7 @@ export class AnalysisEngineService {
         try {
           indicators.ema21 = TI.EMA.calculate({ period: 21, values: closes });
         } catch (error) {
-          this.logger.warn("Fehler bei EMA21-Berechnung:", error);
+          this.logger.warn('Fehler bei EMA21-Berechnung:', error);
         }
       }
 
@@ -536,7 +536,7 @@ export class AnalysisEngineService {
         try {
           indicators.ema100 = TI.EMA.calculate({ period: 100, values: closes });
         } catch (error) {
-          this.logger.warn("Fehler bei EMA100-Berechnung:", error);
+          this.logger.warn('Fehler bei EMA100-Berechnung:', error);
         }
       }
 
@@ -550,14 +550,14 @@ export class AnalysisEngineService {
             low: lows,
           });
         } catch (error) {
-          this.logger.warn("Fehler bei PSAR-Berechnung:", error);
+          this.logger.warn('Fehler bei PSAR-Berechnung:', error);
         }
       }
 
       return indicators;
     } catch (error) {
       this.logger.error(
-        "Fehler bei der Berechnung erweiterter Indikatoren:",
+        'Fehler bei der Berechnung erweiterter Indikatoren:',
         error,
       );
       return {};
@@ -616,13 +616,13 @@ export class AnalysisEngineService {
       };
 
       // Finde lokale Minima (Support)
-      const localLows = this.findLocalExtremes(recentData.lows, "min");
+      const localLows = this.findLocalExtremes(recentData.lows, 'min');
       const avgSupport =
         localLows.reduce((sum, val) => sum + val, 0) / localLows.length;
       support.push(avgSupport || lows[i]);
 
       // Finde lokale Maxima (Resistance)
-      const localHighs = this.findLocalExtremes(recentData.highs, "max");
+      const localHighs = this.findLocalExtremes(recentData.highs, 'max');
       const avgResistance =
         localHighs.reduce((sum, val) => sum + val, 0) / localHighs.length;
       resistance.push(avgResistance || highs[i]);
@@ -634,7 +634,7 @@ export class AnalysisEngineService {
   /**
    * Findet lokale Extreme (Minima oder Maxima)
    */
-  private findLocalExtremes(values: number[], type: "min" | "max"): number[] {
+  private findLocalExtremes(values: number[], type: 'min' | 'max'): number[] {
     const extremes: number[] = [];
     const windowSize = 3;
 
@@ -642,11 +642,11 @@ export class AnalysisEngineService {
       const window = values.slice(i - windowSize, i + windowSize + 1);
       const centerValue = values[i];
 
-      if (type === "min") {
-        const isLocalMin = window.every((val) => centerValue <= val);
+      if (type === 'min') {
+        const isLocalMin = window.every(val => centerValue <= val);
         if (isLocalMin) extremes.push(centerValue);
       } else {
-        const isLocalMax = window.every((val) => centerValue >= val);
+        const isLocalMax = window.every(val => centerValue >= val);
         if (isLocalMax) extremes.push(centerValue);
       }
     }
@@ -814,7 +814,7 @@ export class AnalysisEngineService {
           // ADX liefert ein Objekt zurück, wir speichern nur den ADX-Wert
           const adxValue = indicators.adx[adxIndex];
           updateData.adx =
-            typeof adxValue === "object" ? adxValue.adx : adxValue;
+            typeof adxValue === 'object' ? adxValue.adx : adxValue;
         }
       }
 
@@ -861,7 +861,7 @@ export class AnalysisEngineService {
         where: { ticker },
         include: {
           historicalData: {
-            orderBy: { timestamp: "desc" },
+            orderBy: { timestamp: 'desc' },
             take: limit,
           },
         },
@@ -871,7 +871,7 @@ export class AnalysisEngineService {
         throw new Error(`Aktie ${ticker} nicht gefunden`);
       }
 
-      return stock.historicalData.map((data) => ({
+      return stock.historicalData.map(data => ({
         timestamp: data.timestamp,
         close: data.close,
         sma20: data.sma20,
@@ -905,7 +905,7 @@ export class AnalysisEngineService {
         where: {
           stock: { ticker },
         },
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
       });
 
       if (!latestData) {
@@ -916,23 +916,23 @@ export class AnalysisEngineService {
         ticker,
         timestamp: latestData.timestamp,
         signals: [],
-        overallSentiment: "NEUTRAL",
+        overallSentiment: 'NEUTRAL',
       };
 
       // RSI-Signale
       if (latestData.rsi14) {
         if (latestData.rsi14 > 70) {
           signals.signals.push({
-            type: "RSI",
-            signal: "SELL",
-            strength: "STRONG",
+            type: 'RSI',
+            signal: 'SELL',
+            strength: 'STRONG',
             message: `RSI überkauft (${latestData.rsi14.toFixed(2)})`,
           });
         } else if (latestData.rsi14 < 30) {
           signals.signals.push({
-            type: "RSI",
-            signal: "BUY",
-            strength: "STRONG",
+            type: 'RSI',
+            signal: 'BUY',
+            strength: 'STRONG',
             message: `RSI überverkauft (${latestData.rsi14.toFixed(2)})`,
           });
         }
@@ -942,17 +942,17 @@ export class AnalysisEngineService {
       if (latestData.macd && latestData.macdSignal) {
         if (latestData.macd > latestData.macdSignal) {
           signals.signals.push({
-            type: "MACD",
-            signal: "BUY",
-            strength: "MEDIUM",
-            message: "MACD über Signal-Linie",
+            type: 'MACD',
+            signal: 'BUY',
+            strength: 'MEDIUM',
+            message: 'MACD über Signal-Linie',
           });
         } else {
           signals.signals.push({
-            type: "MACD",
-            signal: "SELL",
-            strength: "MEDIUM",
-            message: "MACD unter Signal-Linie",
+            type: 'MACD',
+            signal: 'SELL',
+            strength: 'MEDIUM',
+            message: 'MACD unter Signal-Linie',
           });
         }
       }
@@ -961,33 +961,33 @@ export class AnalysisEngineService {
       if (latestData.bollUpper && latestData.bollLower && latestData.close) {
         if (latestData.close > latestData.bollUpper) {
           signals.signals.push({
-            type: "BOLLINGER",
-            signal: "SELL",
-            strength: "MEDIUM",
-            message: "Preis über oberem Bollinger Band",
+            type: 'BOLLINGER',
+            signal: 'SELL',
+            strength: 'MEDIUM',
+            message: 'Preis über oberem Bollinger Band',
           });
         } else if (latestData.close < latestData.bollLower) {
           signals.signals.push({
-            type: "BOLLINGER",
-            signal: "BUY",
-            strength: "MEDIUM",
-            message: "Preis unter unterem Bollinger Band",
+            type: 'BOLLINGER',
+            signal: 'BUY',
+            strength: 'MEDIUM',
+            message: 'Preis unter unterem Bollinger Band',
           });
         }
       }
 
       // Berechne Gesamtstimmung
       const buySignals = signals.signals.filter(
-        (s: any) => s.signal === "BUY",
+        (s: any) => s.signal === 'BUY',
       ).length;
       const sellSignals = signals.signals.filter(
-        (s: any) => s.signal === "SELL",
+        (s: any) => s.signal === 'SELL',
       ).length;
 
       if (buySignals > sellSignals) {
-        signals.overallSentiment = "BULLISH";
+        signals.overallSentiment = 'BULLISH';
       } else if (sellSignals > buySignals) {
-        signals.overallSentiment = "BEARISH";
+        signals.overallSentiment = 'BEARISH';
       }
 
       return signals;
@@ -1013,7 +1013,7 @@ export class AnalysisEngineService {
             { macd: { not: null } },
           ],
         },
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
         take: 10,
         include: { stock: true },
       });
@@ -1030,18 +1030,18 @@ export class AnalysisEngineService {
       if (latest.rsi14) {
         if (latest.rsi14 < 30) {
           signals.push({
-            type: "RSI_OVERSOLD",
+            type: 'RSI_OVERSOLD',
             strength: Math.max(0, (30 - latest.rsi14) / 30),
             description: `RSI ist überverkauft (${latest.rsi14.toFixed(2)})`,
-            action: "BUY",
+            action: 'BUY',
             timestamp: latest.timestamp,
           });
         } else if (latest.rsi14 > 70) {
           signals.push({
-            type: "RSI_OVERBOUGHT",
+            type: 'RSI_OVERBOUGHT',
             strength: Math.max(0, (latest.rsi14 - 70) / 30),
             description: `RSI ist überkauft (${latest.rsi14.toFixed(2)})`,
-            action: "SELL",
+            action: 'SELL',
             timestamp: latest.timestamp,
           });
         }
@@ -1059,24 +1059,24 @@ export class AnalysisEngineService {
 
         if (previousCrossover <= 0 && latestCrossover > 0) {
           signals.push({
-            type: "MACD_BULLISH",
+            type: 'MACD_BULLISH',
             strength: Math.min(
               1,
               Math.abs(latestCrossover) / (latest.close * 0.01),
             ),
-            description: "MACD Bullish Crossover erkannt",
-            action: "BUY",
+            description: 'MACD Bullish Crossover erkannt',
+            action: 'BUY',
             timestamp: latest.timestamp,
           });
         } else if (previousCrossover >= 0 && latestCrossover < 0) {
           signals.push({
-            type: "MACD_BEARISH",
+            type: 'MACD_BEARISH',
             strength: Math.min(
               1,
               Math.abs(latestCrossover) / (latest.close * 0.01),
             ),
-            description: "MACD Bearish Crossover erkannt",
-            action: "SELL",
+            description: 'MACD Bearish Crossover erkannt',
+            action: 'SELL',
             timestamp: latest.timestamp,
           });
         }
@@ -1089,24 +1089,24 @@ export class AnalysisEngineService {
 
         if (previousCross <= 0 && latestCross > 0) {
           signals.push({
-            type: "SMA_CROSSOVER",
+            type: 'SMA_CROSSOVER',
             strength: Math.min(
               1,
               Math.abs(latestCross) / (latest.close * 0.02),
             ),
-            description: "Golden Cross: SMA20 übersteigt EMA50",
-            action: "BUY",
+            description: 'Golden Cross: SMA20 übersteigt EMA50',
+            action: 'BUY',
             timestamp: latest.timestamp,
           });
         } else if (previousCross >= 0 && latestCross < 0) {
           signals.push({
-            type: "SMA_CROSSOVER",
+            type: 'SMA_CROSSOVER',
             strength: Math.min(
               1,
               Math.abs(latestCross) / (latest.close * 0.02),
             ),
-            description: "Death Cross: SMA20 fällt unter EMA50",
-            action: "SELL",
+            description: 'Death Cross: SMA20 fällt unter EMA50',
+            action: 'SELL',
             timestamp: latest.timestamp,
           });
         }
@@ -1118,10 +1118,10 @@ export class AnalysisEngineService {
         if (bandWidth < 0.05) {
           // Sehr enge Bänder
           signals.push({
-            type: "BOLLINGER_SQUEEZE",
+            type: 'BOLLINGER_SQUEEZE',
             strength: Math.max(0, (0.05 - bandWidth) / 0.05),
             description: `Bollinger Band Squeeze erkannt (Bandbreite: ${(bandWidth * 100).toFixed(2)}%)`,
-            action: "WATCH",
+            action: 'WATCH',
             timestamp: latest.timestamp,
           });
         }
@@ -1143,10 +1143,10 @@ export class AnalysisEngineService {
 
       if (signals.length === 0) {
         return {
-          recommendation: "HOLD",
+          recommendation: 'HOLD',
           confidence: 0,
           signals: [],
-          reasoning: "Keine klaren Handelssignale erkannt",
+          reasoning: 'Keine klaren Handelssignale erkannt',
         };
       }
 
@@ -1157,9 +1157,9 @@ export class AnalysisEngineService {
 
       for (const signal of signals) {
         totalStrength += signal.strength;
-        if (signal.action === "BUY") {
+        if (signal.action === 'BUY') {
           buyScore += signal.strength;
-        } else if (signal.action === "SELL") {
+        } else if (signal.action === 'SELL') {
           sellScore += signal.strength;
         }
       }
@@ -1169,11 +1169,11 @@ export class AnalysisEngineService {
 
       let recommendation: string;
       if (netScore > 0.5) {
-        recommendation = "BUY";
+        recommendation = 'BUY';
       } else if (netScore < -0.5) {
-        recommendation = "SELL";
+        recommendation = 'SELL';
       } else {
-        recommendation = "HOLD";
+        recommendation = 'HOLD';
       }
 
       return {
@@ -1189,10 +1189,10 @@ export class AnalysisEngineService {
         error,
       );
       return {
-        recommendation: "HOLD",
+        recommendation: 'HOLD',
         confidence: 0,
         signals: [],
-        reasoning: "Fehler bei der Analyse",
+        reasoning: 'Fehler bei der Analyse',
       };
     }
   }
@@ -1216,7 +1216,7 @@ export class AnalysisEngineService {
             { macd: null },
           ],
         },
-        orderBy: { timestamp: "asc" },
+        orderBy: { timestamp: 'asc' },
         take: 200, // Genug für technische Indikatoren
         include: { stock: true },
       });
@@ -1227,10 +1227,10 @@ export class AnalysisEngineService {
       }
 
       this.calculateAllIndicatorsRobust(
-        data.map((d) => d.close),
-        data.map((d) => d.high),
-        data.map((d) => d.low),
-        data.map((d) => Number(d.volume)),
+        data.map(d => d.close),
+        data.map(d => d.high),
+        data.map(d => d.low),
+        data.map(d => Number(d.volume)),
       );
       this.logger.log(`✅ ${data.length} Datenpunkte für ${ticker} analysiert`);
     } catch (error) {
@@ -1244,7 +1244,7 @@ export class AnalysisEngineService {
    */
   async enrichAllData(): Promise<void> {
     try {
-      this.logger.log("📊 Starte Vollanalyse aller Daten...");
+      this.logger.log('📊 Starte Vollanalyse aller Daten...');
 
       const stocks = await this.prisma.stock.findMany();
 
@@ -1256,7 +1256,7 @@ export class AnalysisEngineService {
         `✅ Vollanalyse für ${stocks.length} Aktien abgeschlossen`,
       );
     } catch (error) {
-      this.logger.error("Fehler bei der Vollanalyse:", error);
+      this.logger.error('Fehler bei der Vollanalyse:', error);
       throw error;
     }
   }
@@ -1266,7 +1266,7 @@ export class AnalysisEngineService {
     try {
       return TI.SMA.calculate({ period, values });
     } catch (error) {
-      this.logger.warn("Fehler bei SMA-Berechnung:", error);
+      this.logger.warn('Fehler bei SMA-Berechnung:', error);
       return [];
     }
   }
@@ -1275,7 +1275,7 @@ export class AnalysisEngineService {
     try {
       return TI.EMA.calculate({ period, values });
     } catch (error) {
-      this.logger.warn("Fehler bei EMA-Berechnung:", error);
+      this.logger.warn('Fehler bei EMA-Berechnung:', error);
       return [];
     }
   }
@@ -1284,7 +1284,7 @@ export class AnalysisEngineService {
     try {
       return TI.RSI.calculate({ period, values });
     } catch (error) {
-      this.logger.warn("Fehler bei RSI-Berechnung:", error);
+      this.logger.warn('Fehler bei RSI-Berechnung:', error);
       return [];
     }
   }
@@ -1305,7 +1305,7 @@ export class AnalysisEngineService {
         SimpleMASignal: false,
       });
     } catch (error) {
-      this.logger.warn("Fehler bei MACD-Berechnung:", error);
+      this.logger.warn('Fehler bei MACD-Berechnung:', error);
       return [];
     }
   }
@@ -1322,7 +1322,7 @@ export class AnalysisEngineService {
         values,
       });
     } catch (error) {
-      this.logger.warn("Fehler bei Bollinger Bands-Berechnung:", error);
+      this.logger.warn('Fehler bei Bollinger Bands-Berechnung:', error);
       return [];
     }
   }
@@ -1333,7 +1333,7 @@ export class AnalysisEngineService {
         where: { ticker: symbol },
         include: {
           historicalData: {
-            orderBy: { timestamp: "desc" },
+            orderBy: { timestamp: 'desc' },
             take: 50,
           },
         },
@@ -1343,9 +1343,7 @@ export class AnalysisEngineService {
         throw new Error(`No data found for symbol: ${symbol}`);
       }
 
-      const closes = stock.historicalData.reverse().map((d) => d.close);
-      const highs = stock.historicalData.map((d) => d.high);
-      const lows = stock.historicalData.map((d) => d.low);
+      const closes = stock.historicalData.reverse().map(d => d.close);
 
       const indicators = {
         sma: this.calculateSMA(closes, 20),
@@ -1377,9 +1375,9 @@ export class AnalysisEngineService {
     if (indicators.rsi.length > 0) {
       const currentRSI = indicators.rsi[indicators.rsi.length - 1];
       if (currentRSI > 70) {
-        signals.push("RSI_OVERBOUGHT");
+        signals.push('RSI_OVERBOUGHT');
       } else if (currentRSI < 30) {
-        signals.push("RSI_OVERSOLD");
+        signals.push('RSI_OVERSOLD');
       }
     }
 
@@ -1387,9 +1385,9 @@ export class AnalysisEngineService {
     if (indicators.sma.length > 0) {
       const currentSMA = indicators.sma[indicators.sma.length - 1];
       if (currentPrice > currentSMA) {
-        signals.push("PRICE_ABOVE_SMA");
+        signals.push('PRICE_ABOVE_SMA');
       } else {
-        signals.push("PRICE_BELOW_SMA");
+        signals.push('PRICE_BELOW_SMA');
       }
     }
 
@@ -1413,19 +1411,19 @@ export class AnalysisEngineService {
     const signals = this.generateSignals(indicators, closes);
 
     const bullishSignals = signals.filter(
-      (s) => s.includes("OVERSOLD") || s.includes("ABOVE"),
+      s => s.includes('OVERSOLD') || s.includes('ABOVE'),
     ).length;
 
     const bearishSignals = signals.filter(
-      (s) => s.includes("OVERBOUGHT") || s.includes("BELOW"),
+      s => s.includes('OVERBOUGHT') || s.includes('BELOW'),
     ).length;
 
     if (bullishSignals > bearishSignals) {
-      return "BUY";
+      return 'BUY';
     } else if (bearishSignals > bullishSignals) {
-      return "SELL";
+      return 'SELL';
     } else {
-      return "HOLD";
+      return 'HOLD';
     }
   }
 }

@@ -3,8 +3,8 @@ import {
   OnModuleInit,
   OnModuleDestroy,
   Logger,
-} from "@nestjs/common";
-import { PrismaClient } from "@prisma/client";
+} from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService
@@ -15,16 +15,16 @@ export class PrismaService
 
   constructor() {
     super({
-      log: ["query", "info", "warn", "error"],
+      log: ['query', 'info', 'warn', 'error'],
     });
   }
 
   async onModuleInit() {
     try {
       await this.$connect();
-      this.logger.log("Erfolgreich mit der Datenbank verbunden");
+      this.logger.log('Erfolgreich mit der Datenbank verbunden');
     } catch (error) {
-      this.logger.error("Datenbankverbindung fehlgeschlagen", error);
+      this.logger.error('Datenbankverbindung fehlgeschlagen', error);
       throw error;
     }
   }
@@ -32,9 +32,9 @@ export class PrismaService
   async onModuleDestroy() {
     try {
       await this.$disconnect();
-      this.logger.log("Datenbankverbindung geschlossen");
+      this.logger.log('Datenbankverbindung geschlossen');
     } catch (error) {
-      this.logger.error("Fehler beim Schließen der Datenbankverbindung", error);
+      this.logger.error('Fehler beim Schließen der Datenbankverbindung', error);
     }
   }
 
@@ -59,7 +59,7 @@ export class PrismaService
       );
       return deleted.count;
     } catch (error) {
-      this.logger.error("Fehler beim Bereinigen alter Daten", error);
+      this.logger.error('Fehler beim Bereinigen alter Daten', error);
       throw error;
     }
   }
@@ -84,10 +84,10 @@ export class PrismaService
         return false;
       }
 
-      this.logger.log("Datenbankintegrität ist in Ordnung");
+      this.logger.log('Datenbankintegrität ist in Ordnung');
       return true;
     } catch (error) {
-      this.logger.error("Fehler bei der Integritätsprüfung", error);
+      this.logger.error('Fehler bei der Integritätsprüfung', error);
       return false;
     }
   }
@@ -108,8 +108,8 @@ export class PrismaService
         this.stock.count({ where: { isActive: true } }),
         this.historicalData.count(),
         this.prediction.count(),
-        this.historicalData.findFirst({ orderBy: { timestamp: "desc" } }),
-        this.historicalData.findFirst({ orderBy: { timestamp: "asc" } }),
+        this.historicalData.findFirst({ orderBy: { timestamp: 'desc' } }),
+        this.historicalData.findFirst({ orderBy: { timestamp: 'asc' } }),
         this.$queryRaw`
           SELECT stockId, timestamp, COUNT(*) as count
           FROM historical_data
@@ -153,7 +153,7 @@ export class PrismaService
       };
     } catch (error) {
       this.logger.error(
-        "Fehler beim Abrufen der Datenbank-Statistiken:",
+        'Fehler beim Abrufen der Datenbank-Statistiken:',
         error,
       );
       throw error;
@@ -165,7 +165,7 @@ export class PrismaService
    */
   async removeDuplicateHistoricalData(): Promise<number> {
     try {
-      this.logger.log("Beginne Bereinigung doppelter historischer Daten...");
+      this.logger.log('Beginne Bereinigung doppelter historischer Daten...');
 
       // Finde alle Duplikate
       const duplicates = await this.$queryRaw<
@@ -186,7 +186,7 @@ export class PrismaService
             stockId: duplicate.stockId,
             timestamp: duplicate.timestamp,
           },
-          orderBy: { id: "desc" },
+          orderBy: { id: 'desc' },
         });
 
         // Lösche alle außer dem ersten (neuesten)
@@ -201,7 +201,7 @@ export class PrismaService
       this.logger.log(`${removedCount} doppelte Einträge entfernt`);
       return removedCount;
     } catch (error) {
-      this.logger.error("Fehler beim Entfernen doppelter Daten:", error);
+      this.logger.error('Fehler beim Entfernen doppelter Daten:', error);
       throw error;
     }
   }
@@ -211,7 +211,7 @@ export class PrismaService
    */
   async optimizeDatabase(): Promise<void> {
     try {
-      this.logger.log("Beginne Datenbank-Optimierung...");
+      this.logger.log('Beginne Datenbank-Optimierung...');
 
       // SQLite VACUUM für bessere Performance
       await this.$executeRaw`VACUUM`;
@@ -219,9 +219,9 @@ export class PrismaService
       // Analysiere Tabellen für bessere Query-Performance
       await this.$executeRaw`ANALYZE`;
 
-      this.logger.log("Datenbank-Optimierung abgeschlossen");
+      this.logger.log('Datenbank-Optimierung abgeschlossen');
     } catch (error) {
-      this.logger.error("Fehler bei der Datenbank-Optimierung:", error);
+      this.logger.error('Fehler bei der Datenbank-Optimierung:', error);
       throw error;
     }
   }
@@ -231,13 +231,13 @@ export class PrismaService
    */
   async backupDatabase(backupPath?: string): Promise<string> {
     try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const defaultBackupPath = `./backups/kairos-backup-${timestamp}.db`;
       const finalBackupPath = backupPath || defaultBackupPath;
 
       // Erstelle Backup-Verzeichnis falls nicht vorhanden
-      const fs = await import("fs");
-      const path = await import("path");
+      const fs = await import('fs');
+      const path = await import('path');
       const backupDir = path.dirname(finalBackupPath);
 
       if (!fs.existsSync(backupDir)) {
@@ -250,7 +250,7 @@ export class PrismaService
       this.logger.log(`Datenbank-Backup erstellt: ${finalBackupPath}`);
       return finalBackupPath;
     } catch (error) {
-      this.logger.error("Fehler beim Erstellen des Datenbank-Backups:", error);
+      this.logger.error('Fehler beim Erstellen des Datenbank-Backups:', error);
       throw error;
     }
   }
@@ -275,7 +275,7 @@ export class PrismaService
       };
     } catch (error) {
       this.logger.error(
-        "Fehler beim Überprüfen der Datenbank-Gesundheit:",
+        'Fehler beim Überprüfen der Datenbank-Gesundheit:',
         error,
       );
       return {

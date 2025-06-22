@@ -1,10 +1,10 @@
-import { Injectable } from "@nestjs/common";
-import { LoggerService } from "./logger.service";
-import { ConfigService } from "../config/config.service";
+import { Injectable } from '@nestjs/common';
+import { LoggerService } from './logger.service';
+import { ConfigService } from '../config/config.service';
 
 export interface Notification {
   id: string;
-  type: "INFO" | "WARNING" | "ERROR" | "CRITICAL" | "SUCCESS";
+  type: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL' | 'SUCCESS';
   title: string;
   message: string;
   component: string;
@@ -21,7 +21,7 @@ export interface NotificationAction {
 }
 
 export interface NotificationFilter {
-  type?: "INFO" | "WARNING" | "ERROR" | "CRITICAL" | "SUCCESS";
+  type?: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL' | 'SUCCESS';
   component?: string;
   acknowledged?: boolean;
   startDate?: Date;
@@ -37,7 +37,7 @@ export interface AlertRule {
   enabled: boolean;
   cooldownMinutes: number; // Minimum Zeit zwischen Alerts
   lastTriggered?: Date;
-  notificationTypes: ("console" | "email" | "system")[];
+  notificationTypes: ('console' | 'email' | 'system')[];
 }
 
 @Injectable()
@@ -57,10 +57,10 @@ export class NotificationService {
    * Erstellt eine neue Benachrichtigung
    */
   notify(
-    type: Notification["type"],
+    type: Notification['type'],
     title: string,
     message: string,
-    component: string = "SYSTEM",
+    component: string = 'SYSTEM',
     metadata?: any,
     actions?: NotificationAction[],
   ): string {
@@ -98,10 +98,10 @@ export class NotificationService {
   info(
     title: string,
     message: string,
-    component: string = "SYSTEM",
+    component: string = 'SYSTEM',
     metadata?: any,
   ): string {
-    return this.notify("INFO", title, message, component, metadata);
+    return this.notify('INFO', title, message, component, metadata);
   }
 
   /**
@@ -110,10 +110,10 @@ export class NotificationService {
   success(
     title: string,
     message: string,
-    component: string = "SYSTEM",
+    component: string = 'SYSTEM',
     metadata?: any,
   ): string {
-    return this.notify("SUCCESS", title, message, component, metadata);
+    return this.notify('SUCCESS', title, message, component, metadata);
   }
 
   /**
@@ -122,10 +122,10 @@ export class NotificationService {
   warning(
     title: string,
     message: string,
-    component: string = "SYSTEM",
+    component: string = 'SYSTEM',
     metadata?: any,
   ): string {
-    return this.notify("WARNING", title, message, component, metadata);
+    return this.notify('WARNING', title, message, component, metadata);
   }
 
   /**
@@ -134,10 +134,10 @@ export class NotificationService {
   error(
     title: string,
     message: string,
-    component: string = "SYSTEM",
+    component: string = 'SYSTEM',
     metadata?: any,
   ): string {
-    return this.notify("ERROR", title, message, component, metadata);
+    return this.notify('ERROR', title, message, component, metadata);
   }
 
   /**
@@ -146,10 +146,10 @@ export class NotificationService {
   critical(
     title: string,
     message: string,
-    component: string = "SYSTEM",
+    component: string = 'SYSTEM',
     metadata?: any,
   ): string {
-    return this.notify("CRITICAL", title, message, component, metadata);
+    return this.notify('CRITICAL', title, message, component, metadata);
   }
 
   /**
@@ -157,17 +157,17 @@ export class NotificationService {
    */
   portfolioAlert(
     portfolioId: string,
-    type: "GAIN" | "LOSS" | "RISK" | "REBALANCE",
+    type: 'GAIN' | 'LOSS' | 'RISK' | 'REBALANCE',
     percentage: number,
     currentValue: number,
   ): string {
     const typeMap = {
-      GAIN: { level: "SUCCESS" as const, title: "Portfolio Gewinn" },
-      LOSS: { level: "WARNING" as const, title: "Portfolio Verlust" },
-      RISK: { level: "ERROR" as const, title: "Hohes Portfolio-Risiko" },
+      GAIN: { level: 'SUCCESS' as const, title: 'Portfolio Gewinn' },
+      LOSS: { level: 'WARNING' as const, title: 'Portfolio Verlust' },
+      RISK: { level: 'ERROR' as const, title: 'Hohes Portfolio-Risiko' },
       REBALANCE: {
-        level: "INFO" as const,
-        title: "Portfolio Rebalancing empfohlen",
+        level: 'INFO' as const,
+        title: 'Portfolio Rebalancing empfohlen',
       },
     };
 
@@ -178,7 +178,7 @@ export class NotificationService {
       config.level,
       config.title,
       message,
-      "PORTFOLIO",
+      'PORTFOLIO',
       {
         portfolioId,
         type,
@@ -186,11 +186,11 @@ export class NotificationService {
         currentValue,
         portfolioAlert: true,
       },
-      type === "REBALANCE"
+      type === 'REBALANCE'
         ? [
             {
-              label: "Rebalancing starten",
-              action: "rebalance_portfolio",
+              label: 'Rebalancing starten',
+              action: 'rebalance_portfolio',
               data: { portfolioId },
             },
           ]
@@ -203,7 +203,7 @@ export class NotificationService {
    */
   tradingAlert(
     ticker: string,
-    action: "BUY" | "SELL",
+    action: 'BUY' | 'SELL',
     quantity: number,
     price: number,
     confidence: number,
@@ -212,10 +212,10 @@ export class NotificationService {
     const message = `Empfehlung: ${action} ${quantity} Aktien von ${ticker} bei $${price.toFixed(2)} (Konfidenz: ${(confidence * 100).toFixed(1)}%)`;
 
     return this.notify(
-      "INFO",
+      'INFO',
       title,
       message,
-      "TRADING",
+      'TRADING',
       {
         ticker,
         action,
@@ -226,13 +226,13 @@ export class NotificationService {
       },
       [
         {
-          label: "Signal ausführen",
-          action: "execute_trade",
+          label: 'Signal ausführen',
+          action: 'execute_trade',
           data: { ticker, action, quantity, price },
         },
         {
-          label: "Signal ignorieren",
-          action: "ignore_signal",
+          label: 'Signal ignorieren',
+          action: 'ignore_signal',
           data: { ticker },
         },
       ],
@@ -244,31 +244,31 @@ export class NotificationService {
    */
   mlTrainingAlert(
     model: string,
-    status: "STARTED" | "COMPLETED" | "FAILED" | "PROGRESS",
+    status: 'STARTED' | 'COMPLETED' | 'FAILED' | 'PROGRESS',
     details: any,
   ): string {
     const typeMap = {
-      STARTED: { level: "INFO" as const, title: "ML Training gestartet" },
+      STARTED: { level: 'INFO' as const, title: 'ML Training gestartet' },
       COMPLETED: {
-        level: "SUCCESS" as const,
-        title: "ML Training abgeschlossen",
+        level: 'SUCCESS' as const,
+        title: 'ML Training abgeschlossen',
       },
-      FAILED: { level: "ERROR" as const, title: "ML Training fehlgeschlagen" },
-      PROGRESS: { level: "INFO" as const, title: "ML Training Fortschritt" },
+      FAILED: { level: 'ERROR' as const, title: 'ML Training fehlgeschlagen' },
+      PROGRESS: { level: 'INFO' as const, title: 'ML Training Fortschritt' },
     };
 
     const config = typeMap[status];
     let message = `Modell: ${model}`;
 
-    if (status === "COMPLETED" && details.accuracy) {
+    if (status === 'COMPLETED' && details.accuracy) {
       message += ` - Genauigkeit: ${(details.accuracy * 100).toFixed(2)}%`;
-    } else if (status === "PROGRESS" && details.epoch && details.totalEpochs) {
+    } else if (status === 'PROGRESS' && details.epoch && details.totalEpochs) {
       message += ` - Epoche ${details.epoch}/${details.totalEpochs}`;
-    } else if (status === "FAILED" && details.error) {
+    } else if (status === 'FAILED' && details.error) {
       message += ` - Fehler: ${details.error}`;
     }
 
-    return this.notify(config.level, config.title, message, "ML", {
+    return this.notify(config.level, config.title, message, 'ML', {
       model,
       status,
       details,
@@ -281,13 +281,13 @@ export class NotificationService {
    */
   systemHealthAlert(
     component: string,
-    status: "UP" | "DOWN" | "DEGRADED",
+    status: 'UP' | 'DOWN' | 'DEGRADED',
     metrics?: any,
   ): string {
     const typeMap = {
-      UP: { level: "SUCCESS" as const, title: "System wiederhergestellt" },
-      DOWN: { level: "CRITICAL" as const, title: "System ausgefallen" },
-      DEGRADED: { level: "WARNING" as const, title: "System beeinträchtigt" },
+      UP: { level: 'SUCCESS' as const, title: 'System wiederhergestellt' },
+      DOWN: { level: 'CRITICAL' as const, title: 'System ausgefallen' },
+      DEGRADED: { level: 'WARNING' as const, title: 'System beeinträchtigt' },
     };
 
     const config = typeMap[status];
@@ -302,7 +302,7 @@ export class NotificationService {
       }
     }
 
-    return this.notify(config.level, config.title, message, "SYSTEM", {
+    return this.notify(config.level, config.title, message, 'SYSTEM', {
       component,
       status,
       metrics,
@@ -316,17 +316,17 @@ export class NotificationService {
   async sendAlert(
     title: string,
     message: string,
-    priority: "low" | "medium" | "high" | "critical" = "medium",
-    component: string = "SYSTEM",
+    priority: 'low' | 'medium' | 'high' | 'critical' = 'medium',
+    component: string = 'SYSTEM',
   ): Promise<string> {
     const type =
-      priority === "critical"
-        ? "CRITICAL"
-        : priority === "high"
-          ? "ERROR"
-          : priority === "medium"
-            ? "WARNING"
-            : "INFO";
+      priority === 'critical'
+        ? 'CRITICAL'
+        : priority === 'high'
+          ? 'ERROR'
+          : priority === 'medium'
+            ? 'WARNING'
+            : 'INFO';
 
     return this.notify(type, title, message, component, { priority });
   }
@@ -340,7 +340,7 @@ export class NotificationService {
       notification.acknowledged = true;
       this.logger.info(
         `Notification acknowledged: ${notificationId}`,
-        "NOTIFICATION",
+        'NOTIFICATION',
       );
       return true;
     }
@@ -355,7 +355,7 @@ export class NotificationService {
     if (success) {
       this.logger.info(
         `Notification dismissed: ${notificationId}`,
-        "NOTIFICATION",
+        'NOTIFICATION',
       );
     }
     return success;
@@ -375,7 +375,7 @@ export class NotificationService {
         count++;
       }
     }
-    this.logger.info(`${count} notifications acknowledged`, "NOTIFICATION");
+    this.logger.info(`${count} notifications acknowledged`, 'NOTIFICATION');
     return count;
   }
 
@@ -390,9 +390,7 @@ export class NotificationService {
 
     // Filter anwenden
     if (filter) {
-      notifications = notifications.filter((n) =>
-        this.matchesFilter(n, filter),
-      );
+      notifications = notifications.filter(n => this.matchesFilter(n, filter));
     }
 
     // Nach Timestamp sortieren (neueste zuerst)
@@ -416,7 +414,7 @@ export class NotificationService {
   /**
    * Alert-Regel hinzufügen
    */
-  addAlertRule(rule: Omit<AlertRule, "id">): string {
+  addAlertRule(rule: Omit<AlertRule, 'id'>): string {
     const id = `alert-rule-${Date.now()}`;
     const alertRule: AlertRule = { ...rule, id };
     this.alertRules.set(id, alertRule);
@@ -442,18 +440,18 @@ export class NotificationService {
 
     // Bedingung prüfen (vereinfacht)
     let triggered = false;
-    if (rule.condition.includes(">")) {
+    if (rule.condition.includes('>')) {
       triggered = currentValue > rule.threshold;
-    } else if (rule.condition.includes("<")) {
+    } else if (rule.condition.includes('<')) {
       triggered = currentValue < rule.threshold;
-    } else if (rule.condition.includes("=")) {
+    } else if (rule.condition.includes('=')) {
       triggered = Math.abs(currentValue - rule.threshold) < 0.01;
     }
 
     if (triggered) {
       rule.lastTriggered = new Date();
       this.notify(
-        "WARNING",
+        'WARNING',
         `Alert: ${rule.name}`,
         `Bedingung "${rule.condition}" erfüllt. Aktueller Wert: ${currentValue}`,
         rule.component,
@@ -469,37 +467,37 @@ export class NotificationService {
    * Standard Alert-Regeln initialisieren
    */
   private initializeDefaultAlertRules(): void {
-    const defaultRules: Omit<AlertRule, "id">[] = [
+    const defaultRules: Omit<AlertRule, 'id'>[] = [
       {
-        name: "Portfolio Verlust > 10%",
-        component: "PORTFOLIO",
-        condition: "portfolio_loss > 10",
+        name: 'Portfolio Verlust > 10%',
+        component: 'PORTFOLIO',
+        condition: 'portfolio_loss > 10',
         threshold: 10,
         enabled: true,
         cooldownMinutes: 60,
-        notificationTypes: ["console", "email"],
+        notificationTypes: ['console', 'email'],
       },
       {
-        name: "System CPU > 90%",
-        component: "SYSTEM",
-        condition: "cpu_usage > 90",
+        name: 'System CPU > 90%',
+        component: 'SYSTEM',
+        condition: 'cpu_usage > 90',
         threshold: 90,
         enabled: true,
         cooldownMinutes: 15,
-        notificationTypes: ["console", "system"],
+        notificationTypes: ['console', 'system'],
       },
       {
-        name: "ML Accuracy < 60%",
-        component: "ML",
-        condition: "ml_accuracy < 60",
+        name: 'ML Accuracy < 60%',
+        component: 'ML',
+        condition: 'ml_accuracy < 60',
         threshold: 60,
         enabled: true,
         cooldownMinutes: 120,
-        notificationTypes: ["console"],
+        notificationTypes: ['console'],
       },
     ];
 
-    defaultRules.forEach((rule) => this.addAlertRule(rule));
+    defaultRules.forEach(rule => this.addAlertRule(rule));
   }
 
   /**
@@ -510,35 +508,35 @@ export class NotificationService {
     const message = `${notification.title}: ${notification.message}`;
 
     switch (logLevel) {
-      case "DEBUG":
+      case 'DEBUG':
         this.logger.debug(
           message,
           notification.component,
           notification.metadata,
         );
         break;
-      case "INFO":
+      case 'INFO':
         this.logger.info(
           message,
           notification.component,
           notification.metadata,
         );
         break;
-      case "WARN":
+      case 'WARN':
         this.logger.warn(
           message,
           notification.component,
           notification.metadata,
         );
         break;
-      case "ERROR":
+      case 'ERROR':
         this.logger.error(
           message,
           notification.component,
           notification.metadata,
         );
         break;
-      case "CRITICAL":
+      case 'CRITICAL':
         this.logger.critical(
           message,
           notification.component,
@@ -567,8 +565,8 @@ export class NotificationService {
       // z.B. Slack, Discord, SMS, etc.
     } catch (error) {
       this.logger.error(
-        "Failed to send external notification",
-        "NOTIFICATION",
+        'Failed to send external notification',
+        'NOTIFICATION',
         { error: error instanceof Error ? error.message : String(error) },
       );
     }
@@ -583,7 +581,7 @@ export class NotificationService {
     // In einer echten Implementierung würde hier ein E-Mail-Service verwendet
     this.logger.info(
       `Email notification would be sent: ${notification.title}`,
-      "NOTIFICATION",
+      'NOTIFICATION',
     );
   }
 
@@ -591,28 +589,28 @@ export class NotificationService {
    * Prüft ob E-Mail gesendet werden soll
    */
   private shouldSendEmail(notification: Notification): boolean {
-    return notification.type === "CRITICAL" || notification.type === "ERROR";
+    return notification.type === 'CRITICAL' || notification.type === 'ERROR';
   }
 
   /**
    * Log-Level basierend auf Notification-Type ermitteln
    */
   private getLogLevel(
-    type: Notification["type"],
-  ): "DEBUG" | "INFO" | "WARN" | "ERROR" | "CRITICAL" {
+    type: Notification['type'],
+  ): 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL' {
     switch (type) {
-      case "INFO":
-        return "INFO";
-      case "SUCCESS":
-        return "INFO";
-      case "WARNING":
-        return "WARN";
-      case "ERROR":
-        return "ERROR";
-      case "CRITICAL":
-        return "CRITICAL";
+      case 'INFO':
+        return 'INFO';
+      case 'SUCCESS':
+        return 'INFO';
+      case 'WARNING':
+        return 'WARN';
+      case 'ERROR':
+        return 'ERROR';
+      case 'CRITICAL':
+        return 'CRITICAL';
       default:
-        return "INFO";
+        return 'INFO';
     }
   }
 
@@ -658,7 +656,7 @@ export class NotificationService {
     if (cleanedCount > 0) {
       this.logger.debug(
         `Cleaned up ${cleanedCount} old notifications`,
-        "NOTIFICATION",
+        'NOTIFICATION',
       );
     }
   }

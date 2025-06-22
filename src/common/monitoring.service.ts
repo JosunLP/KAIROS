@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { PrismaService } from "../persistence/prisma.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../persistence/prisma.service';
 
 export interface SystemMetrics {
   uptime: number;
@@ -7,16 +7,16 @@ export interface SystemMetrics {
   trackedStocks: number;
   totalDataPoints: number;
   lastDataUpdate: Date | null;
-  mlModelStatus: "IDLE" | "TRAINING" | "PREDICTING" | "ERROR";
+  mlModelStatus: 'IDLE' | 'TRAINING' | 'PREDICTING' | 'ERROR';
   portfolioCount: number;
-  systemHealth: "HEALTHY" | "WARNING" | "CRITICAL";
+  systemHealth: 'HEALTHY' | 'WARNING' | 'CRITICAL';
   activeConnections: number;
   errorRate: number; // Errors per hour
 }
 
 export interface SystemAlert {
   id: string;
-  type: "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+  type: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
   message: string;
   component: string;
   timestamp: Date;
@@ -59,7 +59,7 @@ export class MonitoringService {
         this.prisma.stock.count(),
         this.prisma.historicalData.count(),
         this.prisma.historicalData.findFirst({
-          orderBy: { timestamp: "desc" },
+          orderBy: { timestamp: 'desc' },
         }),
       ]);
 
@@ -81,15 +81,15 @@ export class MonitoringService {
         trackedStocks: stockCount,
         totalDataPoints: dataPointCount,
         lastDataUpdate: lastDataPoint?.timestamp || null,
-        mlModelStatus: "IDLE", // Würde von ML-Service geholt
+        mlModelStatus: 'IDLE', // Würde von ML-Service geholt
         portfolioCount,
         systemHealth,
         activeConnections: 1, // Vereinfacht
         errorRate,
       };
     } catch (error) {
-      this.logger.error("Fehler beim Sammeln der System-Metriken:", error);
-      this.recordError("MONITORING", "Fehler beim Sammeln der Metriken");
+      this.logger.error('Fehler beim Sammeln der System-Metriken:', error);
+      this.recordError('MONITORING', 'Fehler beim Sammeln der Metriken');
       throw error;
     }
   }
@@ -98,7 +98,7 @@ export class MonitoringService {
    * Erstellt einen System-Alert
    */
   createAlert(
-    type: SystemAlert["type"],
+    type: SystemAlert['type'],
     message: string,
     component: string,
     details?: any,
@@ -122,11 +122,11 @@ export class MonitoringService {
 
     // Log Alert
     const logMethod =
-      type === "CRITICAL" || type === "ERROR"
-        ? "error"
-        : type === "WARNING"
-          ? "warn"
-          : "log";
+      type === 'CRITICAL' || type === 'ERROR'
+        ? 'error'
+        : type === 'WARNING'
+          ? 'warn'
+          : 'log';
     this.logger[logMethod](`[${component}] ${message}`, details);
 
     return alert;
@@ -136,14 +136,14 @@ export class MonitoringService {
    * Holt alle aktiven Alerts
    */
   getActiveAlerts(): SystemAlert[] {
-    return this.alerts.filter((alert) => !alert.acknowledged);
+    return this.alerts.filter(alert => !alert.acknowledged);
   }
 
   /**
    * Bestätigt einen Alert
    */
   acknowledgeAlert(alertId: string): boolean {
-    const alert = this.alerts.find((a) => a.id === alertId);
+    const alert = this.alerts.find(a => a.id === alertId);
     if (alert) {
       alert.acknowledged = true;
       this.logger.log(`Alert bestätigt: ${alertId}`);
@@ -157,7 +157,7 @@ export class MonitoringService {
    */
   recordError(component: string, message: string, details?: any): void {
     this.errorCount++;
-    this.createAlert("ERROR", message, component, details);
+    this.createAlert('ERROR', message, component, details);
   }
 
   /**
@@ -178,7 +178,7 @@ export class MonitoringService {
   getPerformanceMetrics(lastMinutes: number = 60): PerformanceMetrics[] {
     const cutoff = new Date(Date.now() - lastMinutes * 60 * 1000);
     return this.performanceHistory.filter(
-      (metric) => metric && new Date() >= cutoff,
+      metric => metric && new Date() >= cutoff,
     );
   }
 
@@ -188,18 +188,18 @@ export class MonitoringService {
   private assessSystemHealth(
     memoryUsage: NodeJS.MemoryUsage,
     errorCount: number,
-  ): SystemMetrics["systemHealth"] {
+  ): SystemMetrics['systemHealth'] {
     // Memory-Nutzung prüfen (über 90% = Critical, über 70% = Warning)
     const memoryUsagePercent =
       (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
 
     if (memoryUsagePercent > 90 || errorCount > 10) {
-      return "CRITICAL";
+      return 'CRITICAL';
     } else if (memoryUsagePercent > 70 || errorCount > 5) {
-      return "WARNING";
+      return 'WARNING';
     }
 
-    return "HEALTHY";
+    return 'HEALTHY';
   }
 
   /**
@@ -223,7 +223,7 @@ export class MonitoringService {
         // System-Health-Checks
         await this.performHealthChecks();
       } catch (error) {
-        this.logger.error("Fehler beim Performance-Monitoring:", error);
+        this.logger.error('Fehler beim Performance-Monitoring:', error);
       }
     }, 60000); // Jede Minute
   }
@@ -247,7 +247,7 @@ export class MonitoringService {
         dataIngestionRate: 0, // Würde von Data-Ingestion-Service verfolgt
       };
     } catch (error) {
-      this.recordError("DATABASE", "DB-Verbindungsfehler", error);
+      this.recordError('DATABASE', 'DB-Verbindungsfehler', error);
       throw error;
     }
   }
@@ -263,9 +263,9 @@ export class MonitoringService {
 
     if (memoryUsagePercent > 80) {
       this.createAlert(
-        "WARNING",
+        'WARNING',
         `Hohe Speichernutzung: ${memoryUsagePercent.toFixed(1)}%`,
-        "SYSTEM",
+        'SYSTEM',
       );
     }
 
@@ -273,9 +273,9 @@ export class MonitoringService {
     const errorRate = this.calculateErrorRate();
     if (errorRate > 5) {
       this.createAlert(
-        "WARNING",
+        'WARNING',
         `Hohe Fehlerrate: ${errorRate.toFixed(1)} Fehler/Stunde`,
-        "SYSTEM",
+        'SYSTEM',
       );
     }
 
@@ -311,7 +311,7 @@ export class MonitoringService {
         },
       };
     } catch (error) {
-      this.logger.error("Fehler beim Exportieren der Diagnose:", error);
+      this.logger.error('Fehler beim Exportieren der Diagnose:', error);
       throw error;
     }
   }

@@ -1,10 +1,10 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { PrismaService } from "../persistence/prisma.service";
-import { AlphaVantageProvider } from "./providers/alpha-vantage.provider";
-import { PolygonProvider } from "./providers/polygon.provider";
-import { FinnhubProvider } from "./providers/finnhub.provider";
-import { MockProvider } from "./providers/mock.provider";
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../persistence/prisma.service';
+import { AlphaVantageProvider } from './providers/alpha-vantage.provider';
+import { FinnhubProvider } from './providers/finnhub.provider';
+import { MockProvider } from './providers/mock.provider';
+import { PolygonProvider } from './providers/polygon.provider';
 
 export interface MarketDataPoint {
   timestamp: Date;
@@ -70,7 +70,7 @@ export class DataIngestionService {
         }
       }
     } catch (error) {
-      this.logger.error("Fehler beim Abrufen der aktuellsten Daten", error);
+      this.logger.error('Fehler beim Abrufen der aktuellsten Daten', error);
       throw error;
     }
   }
@@ -93,7 +93,7 @@ export class DataIngestionService {
       if (!stockName) {
         try {
           // Versuche über Alpha Vantage die aktuellen Daten zu ermitteln
-          const quote = await this.alphaVantage.fetchLatestData(ticker);
+          await this.alphaVantage.fetchLatestData(ticker);
           stockName = ticker; // Verwende erstmal den Ticker als Namen
         } catch (error) {
           this.logger.warn(
@@ -104,7 +104,7 @@ export class DataIngestionService {
       }
 
       // Aktie in Datenbank hinzufügen
-      const stock = await this.prisma.stock.create({
+      await this.prisma.stock.create({
         data: {
           ticker,
           name: stockName || ticker, // Fallback auf ticker wenn Name nicht verfügbar
@@ -134,31 +134,41 @@ export class DataIngestionService {
       // Durchlaufe alle Provider in der Reihenfolge ihrer Priorität
       for (const provider of this.providers) {
         if (!provider.isConfigured()) {
-          this.logger.debug(`${provider.name} nicht konfiguriert für ${ticker}, überspringe...`);
+          this.logger.debug(
+            `${provider.name} nicht konfiguriert für ${ticker}, überspringe...`,
+          );
           continue;
         }
 
         try {
           this.logger.debug(`Versuche ${provider.name} für ${ticker}...`);
           data = await provider.fetchHistoricalData(ticker, 30); // Letzten 30 Tage
-          
+
           if (data && data.length > 0) {
-            this.logger.log(`✅ ${data.length} Datenpunkte für ${ticker} von ${provider.name} erhalten`);
+            this.logger.log(
+              `✅ ${data.length} Datenpunkte für ${ticker} von ${provider.name} erhalten`,
+            );
             break; // Erfolgreich, stoppe die Schleife
           } else {
-            this.logger.warn(`${provider.name} hat keine Daten für ${ticker} zurückgegeben`);
+            this.logger.warn(
+              `${provider.name} hat keine Daten für ${ticker} zurückgegeben`,
+            );
           }
-          
         } catch (error) {
           lastError = error as Error;
-          this.logger.warn(`${provider.name} fehlgeschlagen für ${ticker}: ${(error as Error).message}`);
+          this.logger.warn(
+            `${provider.name} fehlgeschlagen für ${ticker}: ${(error as Error).message}`,
+          );
           continue; // Versuche nächsten Provider
         }
       }
 
       if (!data || data.length === 0) {
         if (lastError) {
-          this.logger.error(`Alle Provider fehlgeschlagen für ${ticker}. Letzter Fehler:`, lastError);
+          this.logger.error(
+            `Alle Provider fehlgeschlagen für ${ticker}. Letzter Fehler:`,
+            lastError,
+          );
         }
         this.logger.warn(`Keine Daten für ${ticker} erhalten`);
         return;
@@ -185,7 +195,7 @@ export class DataIngestionService {
   ): Promise<void> {
     const provider = this.getAvailableProvider();
     if (!provider) {
-      throw new Error("Kein konfigurierter Datenanbieter verfügbar");
+      throw new Error('Kein konfigurierter Datenanbieter verfügbar');
     }
 
     try {
@@ -311,7 +321,7 @@ export class DataIngestionService {
    * Gibt den ersten verfügbaren und konfigurierten Provider zurück
    */
   private getAvailableProvider(): DataProvider | null {
-    return this.providers.find((provider) => provider.isConfigured()) || null;
+    return this.providers.find(provider => provider.isConfigured()) || null;
   }
 
   /**
@@ -319,7 +329,7 @@ export class DataIngestionService {
    */
   private getDelayBetweenRequests(): number {
     const requestsPerMinute = this.configService.get<number>(
-      "API_REQUESTS_PER_MINUTE",
+      'API_REQUESTS_PER_MINUTE',
       5,
     );
     return Math.ceil(60000 / requestsPerMinute); // Millisekunden
@@ -329,7 +339,7 @@ export class DataIngestionService {
    * Hilfsfunktion für Verzögerungen
    */
   private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -344,11 +354,11 @@ export class DataIngestionService {
       const totalDataPoints = await this.prisma.historicalData.count();
 
       const oldestData = await this.prisma.historicalData.findFirst({
-        orderBy: { timestamp: "asc" },
+        orderBy: { timestamp: 'asc' },
       });
 
       const newestData = await this.prisma.historicalData.findFirst({
-        orderBy: { timestamp: "desc" },
+        orderBy: { timestamp: 'desc' },
       });
 
       return {
@@ -357,11 +367,11 @@ export class DataIngestionService {
         oldestData: oldestData?.timestamp,
         newestData: newestData?.timestamp,
         availableProviders: this.providers
-          .filter((p) => p.isConfigured())
-          .map((p) => p.name),
+          .filter(p => p.isConfigured())
+          .map(p => p.name),
       };
     } catch (error) {
-      this.logger.error("Fehler beim Abrufen der Datenstatistiken", error);
+      this.logger.error('Fehler beim Abrufen der Datenstatistiken', error);
       throw error;
     }
   }
