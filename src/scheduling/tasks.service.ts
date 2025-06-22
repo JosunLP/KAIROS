@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
+import { NotificationService } from '../common/notification.service';
 import { ConfigService } from '../config/config.service';
 import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
 import { MlPredictionService } from '../ml-prediction/ml-prediction.service';
@@ -18,6 +19,7 @@ export class TasksService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly cronMonitoring: CronMonitoringService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async onModuleInit() {
@@ -411,6 +413,88 @@ export class TasksService implements OnModuleInit {
         'Fehler bei der Standard-Aktien-Initialisierung',
         error,
       );
+      throw error;
+    }
+  }
+
+  /**
+   * Führt eine Datenintegritätsprüfung durch
+   */
+  @Cron('0 1 * * *') // Täglich um 1:00 Uhr
+  async performDataIntegrityCheck(): Promise<void> {
+    this.logger.log('🔍 Starte Datenintegritätsprüfung...');
+
+    try {
+      const stats = await this.dataIngestion.getDataStatistics();
+
+      // Prüfe Datenqualität
+      const issues: string[] = [];
+
+      // Prüfe ob es aktive Aktien gibt
+      if (stats.activeStocks === 0) {
+        issues.push('Keine aktiven Aktien gefunden');
+      }
+
+      // Prüfe Datenalter
+      if (stats.newestData) {
+        const dataAge = Date.now() - stats.newestData.getTime();
+        const dataAgeHours = dataAge / (1000 * 60 * 60);
+
+        if (dataAgeHours > 48) {
+          issues.push(`Daten sind veraltet (${Math.round(dataAgeHours)}h alt)`);
+        }
+      }
+
+      // Prüfe Provider-Status
+      const unhealthyProviders = Object.entries(stats.providerStats)
+        .filter(([_, providerStats]) => providerStats.successRate < 80)
+        .map(([name, _]) => name);
+
+      if (unhealthyProviders.length > 0) {
+        issues.push(
+          `Unzuverlässige Provider: ${unhealthyProviders.join(', ')}`,
+        );
+      }
+
+      if (issues.length > 0) {
+        this.logger.warn(
+          `Datenintegritätsprobleme gefunden: ${issues.join(', ')}`,
+        );
+
+        // Hier könnte eine Benachrichtigung gesendet werden
+        await this.notificationService.sendAlert(
+          'Datenintegritätsprobleme',
+          `Datenintegritätsprobleme: ${issues.join(', ')}`,
+          'medium',
+          'DATA_INTEGRITY',
+        );
+      } else {
+        this.logger.log('✅ Datenintegritätsprüfung erfolgreich abgeschlossen');
+      }
+    } catch (error) {
+      this.logger.error('Fehler bei der Datenintegritätsprüfung:', error);
+
+      await this.notificationService.sendAlert(
+        'Datenintegritätsprüfung fehlgeschlagen',
+        'Datenintegritätsprüfung fehlgeschlagen',
+        'high',
+        'DATA_INTEGRITY',
+      );
+    }
+  }
+
+  /**
+   * Fügt eine Aktie zur Verfolgung hinzu
+   */
+  async addStockToTracking(ticker: string): Promise<void> {
+    try {
+      this.logger.log(`📈 Füge ${ticker} zur Verfolgung hinzu...`);
+
+      await this.dataIngestion.addStockToTracking(ticker);
+
+      this.logger.log(`✅ ${ticker} erfolgreich zur Verfolgung hinzugefügt`);
+    } catch (error) {
+      this.logger.error(`Fehler beim Hinzufügen von ${ticker}:`, error);
       throw error;
     }
   }

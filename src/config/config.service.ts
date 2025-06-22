@@ -1,468 +1,423 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
+import {
+  ApiConfig,
+  AppConfig,
+  CacheConfig,
+  DatabaseConfig,
+} from '../common/types';
 
 @Injectable()
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
+  private readonly config: AppConfig;
 
-  constructor(private readonly nestConfigService: NestConfigService) {}
-
-  // API Keys
-  get alphaVantageApiKey(): string {
-    return this.nestConfigService.get<string>('ALPHA_VANTAGE_API_KEY', '');
+  constructor(private readonly nestConfigService: NestConfigService) {
+    this.config = this.loadConfiguration();
+    this.validateConfiguration();
   }
 
-  get polygonApiKey(): string {
-    return this.nestConfigService.get<string>('POLYGON_API_KEY', '');
+  /**
+   * Lädt und validiert die Konfiguration
+   */
+  private loadConfiguration(): AppConfig {
+    const config: AppConfig = {
+      environment: this.getEnvironment(),
+      port: this.getNumber('APP_PORT', 3000),
+      host: this.getString('APP_HOST', 'localhost'),
+      cors: {
+        enabled: this.getBoolean('CORS_ENABLED', true),
+        origins: this.getStringArray('CORS_ORIGINS', ['http://localhost:3000']),
+      },
+      logging: {
+        level: this.getString('LOG_LEVEL', 'info'),
+        file: this.getBoolean('ENABLE_FILE_LOGGING', true),
+        console: this.getBoolean('ENABLE_CONSOLE_LOGGING', true),
+      },
+      database: this.loadDatabaseConfig(),
+      cache: this.loadCacheConfig(),
+      apis: this.loadApiConfigs(),
+      ml: {
+        enabled: this.getBoolean('ML_ENABLED', true),
+        serviceUrl: this.getString('ML_SERVICE_URL', 'http://localhost:8080'),
+        timeout: this.getNumber('ML_TIMEOUT', 30000),
+      },
+      scheduling: {
+        enabled: this.getBoolean('SCHEDULING_ENABLED', true),
+        timezone: this.getString('SCHEDULING_TIMEZONE', 'Europe/Berlin'),
+      },
+    };
+
+    return config;
   }
 
-  get finnhubApiKey(): string {
-    return this.nestConfigService.get<string>('FINNHUB_API_KEY', '');
+  /**
+   * Lädt Datenbank-Konfiguration
+   */
+  private loadDatabaseConfig(): DatabaseConfig {
+    return {
+      url: this.getString(
+        'DATABASE_URL',
+        'postgresql://kairos:kairos@localhost:5432/kairos',
+      ),
+      type: this.getDatabaseType(),
+      poolSize: this.getNumber('DATABASE_POOL_SIZE', 10),
+      timeout: this.getNumber('DATABASE_TIMEOUT', 30000),
+      ssl: this.getBoolean('DATABASE_SSL', false),
+    };
   }
 
-  // Datenbank
-  get databaseUrl(): string {
-    return this.nestConfigService.get<string>(
-      'DATABASE_URL',
-      'file:./kairos.db',
-    );
+  /**
+   * Lädt Cache-Konfiguration
+   */
+  private loadCacheConfig(): CacheConfig {
+    return {
+      enabled: this.getBoolean('CACHE_ENABLED', true),
+      ttl: this.getNumber('CACHE_TTL', 300), // 5 Minuten
+      maxSize: this.getNumber('CACHE_MAX_SIZE', 1000),
+      cleanupInterval: this.getNumber('CACHE_CLEANUP_INTERVAL', 60000), // 1 Minute
+    };
   }
 
-  // ML Konfiguration
-  get mlModelPath(): string {
-    return this.nestConfigService.get<string>('ML_MODEL_PATH', './models');
+  /**
+   * Lädt API-Konfigurationen
+   */
+  private loadApiConfigs(): AppConfig['apis'] {
+    return {
+      alphaVantage: this.loadApiConfig('ALPHA_VANTAGE'),
+      polygon: this.loadApiConfig('POLYGON'),
+      finnhub: this.loadApiConfig('FINNHUB'),
+    };
   }
 
-  get mlTrainingEpochs(): number {
-    return this.nestConfigService.get<number>('ML_TRAINING_EPOCHS', 50);
+  /**
+   * Lädt einzelne API-Konfiguration
+   */
+  private loadApiConfig(prefix: string): ApiConfig | undefined {
+    const baseUrl = this.getString(`${prefix}_BASE_URL`, '');
+    const apiKey = this.getString(`${prefix}_API_KEY`, '');
+
+    if (!baseUrl || !apiKey) {
+      return undefined;
+    }
+
+    return {
+      baseUrl,
+      apiKey,
+      timeout: this.getNumber(`${prefix}_TIMEOUT`, 10000),
+      retries: this.getNumber(`${prefix}_RETRIES`, 3),
+      rateLimit: this.getNumber(`${prefix}_RATE_LIMIT`, 100),
+    };
   }
 
-  get mlBatchSize(): number {
-    return this.nestConfigService.get<number>('ML_BATCH_SIZE', 32);
-  }
-
-  get mlSequenceLength(): number {
-    return this.nestConfigService.get<number>('ML_SEQUENCE_LENGTH', 30);
-  }
-
-  // Scheduling
-  get dataFetchInterval(): string {
-    return this.nestConfigService.get<string>(
-      'DATA_FETCH_INTERVAL',
-      '*/15 * * * *',
-    ); // Alle 15 Minuten
-  }
-
-  get analysisInterval(): string {
-    return this.nestConfigService.get<string>('ANALYSIS_INTERVAL', '0 * * * *'); // Jede Stunde
-  }
-
-  get trainingInterval(): string {
-    return this.nestConfigService.get<string>('TRAINING_INTERVAL', '0 2 * * *'); // Täglich um 2 Uhr
-  }
-
-  // Scheduling - Erweiterte Cron Job Konfiguration
-  get dataIngestionCron(): string {
-    return this.nestConfigService.get<string>(
-      'DATA_INGESTION_CRON',
-      '*/15 * * * *',
-    );
-  }
-
-  get technicalAnalysisCron(): string {
-    return this.nestConfigService.get<string>(
-      'TECHNICAL_ANALYSIS_CRON',
-      '0 * * * *',
-    );
-  }
-
-  get mlTrainingCron(): string {
-    return this.nestConfigService.get<string>('ML_TRAINING_CRON', '0 2 * * *');
-  }
-
-  get predictionValidationCron(): string {
-    return this.nestConfigService.get<string>(
-      'PREDICTION_VALIDATION_CRON',
-      '0 3 * * *',
-    );
-  }
-
-  get dataCleaupCron(): string {
-    return this.nestConfigService.get<string>('DATA_CLEANUP_CRON', '0 4 * * 0');
-  }
-
-  get dailyPredictionCron(): string {
-    return this.nestConfigService.get<string>(
-      'DAILY_PREDICTION_CRON',
-      '0 6 * * *',
-    );
-  }
-
-  get dataIntegrityCron(): string {
-    return this.nestConfigService.get<string>(
-      'DATA_INTEGRITY_CRON',
-      '0 1 * * *',
-    );
-  }
-
-  get schedulingTimezone(): string {
-    return this.nestConfigService.get<string>(
-      'SCHEDULING_TIMEZONE',
-      'Europe/Berlin',
-    );
-  }
-
-  // Cron Job Monitoring
-  get enableCronMonitoring(): boolean {
-    return this.nestConfigService.get<boolean>('ENABLE_CRON_MONITORING', true);
-  }
-
-  get cronJobTimeout(): number {
-    return this.nestConfigService.get<number>('CRON_JOB_TIMEOUT', 300000); // 5 Minuten
-  }
-
-  get cronJobRetryAttempts(): number {
-    return this.nestConfigService.get<number>('CRON_JOB_RETRY_ATTEMPTS', 3);
-  }
-
-  get cronJobRetryDelay(): number {
-    return this.nestConfigService.get<number>('CRON_JOB_RETRY_DELAY', 30000); // 30 Sekunden
-  }
-
-  // Notification Settings für Cron Jobs
-  get enableCronNotifications(): boolean {
-    return this.nestConfigService.get<boolean>(
-      'ENABLE_CRON_NOTIFICATIONS',
-      false,
-    );
-  }
-
-  get cronFailureThreshold(): number {
-    return this.nestConfigService.get<number>('CRON_FAILURE_THRESHOLD', 3);
-  }
-
-  // API Rate Limits
-  get alphaVantageRateLimit(): number {
-    return this.nestConfigService.get<number>('ALPHA_VANTAGE_RATE_LIMIT', 5); // Anfragen pro Minute
-  }
-
-  get polygonRateLimit(): number {
-    return this.nestConfigService.get<number>('POLYGON_RATE_LIMIT', 10);
-  }
-
-  get finnhubRateLimit(): number {
-    return this.nestConfigService.get<number>('FINNHUB_RATE_LIMIT', 60);
-  }
-
-  // Retry-Konfiguration
-  get retryAttempts(): number {
-    return this.nestConfigService.get<number>('RETRY_ATTEMPTS', 3);
-  }
-
-  get retryDelay(): number {
-    return this.nestConfigService.get<number>('RETRY_DELAY', 1000); // ms
-  }
-
-  // Logging
-  get logLevel(): string {
-    return this.nestConfigService.get<string>('LOG_LEVEL', 'info');
-  }
-
-  get enableFileLogging(): boolean {
-    return this.nestConfigService.get<boolean>('ENABLE_FILE_LOGGING', false);
-  }
-
-  get logFilePath(): string {
-    return this.nestConfigService.get<string>(
-      'LOG_FILE_PATH',
-      './logs/kairos.log',
-    );
-  }
-  // Validierung der Konfiguration
-  validateConfig(): boolean {
+  /**
+   * Validiert die Konfiguration
+   */
+  private validateConfiguration(): void {
     const errors: string[] = [];
-    const warnings: string[] = [];
 
-    // Prüfe ob mindestens ein API-Key vorhanden ist
-    if (
-      !this.alphaVantageApiKey &&
-      !this.polygonApiKey &&
-      !this.finnhubApiKey
-    ) {
-      errors.push(
-        'Mindestens ein API-Key (ALPHA_VANTAGE_API_KEY, POLYGON_API_KEY oder FINNHUB_API_KEY) muss gesetzt sein',
-      );
+    // Basis-Validierung
+    if (!this.config.port || this.config.port < 1 || this.config.port > 65535) {
+      errors.push('Invalid port number');
     }
 
-    // Prüfe ML-Parameter
-    if (this.mlTrainingEpochs < 1 || this.mlTrainingEpochs > 1000) {
-      errors.push('ML_TRAINING_EPOCHS muss zwischen 1 und 1000 liegen');
+    if (!this.config.database.url) {
+      errors.push('Database URL is required');
     }
 
-    if (this.mlBatchSize < 1 || this.mlBatchSize > 1024) {
-      errors.push('ML_BATCH_SIZE muss zwischen 1 und 1024 liegen');
+    // API-Validierung
+    const hasApiConfig = Object.values(this.config.apis).some(
+      api => api !== undefined,
+    );
+    if (!hasApiConfig) {
+      errors.push('At least one API configuration is required');
     }
 
-    if (this.mlSequenceLength < 5 || this.mlSequenceLength > 100) {
-      errors.push('ML_SEQUENCE_LENGTH muss zwischen 5 und 100 liegen');
+    // ML-Service-Validierung
+    if (this.config.ml.enabled && !this.config.ml.serviceUrl) {
+      errors.push('ML service URL is required when ML is enabled');
     }
 
-    // Prüfe Trading Limits
-    if (this.maxTradeAmount <= this.minTradeAmount) {
-      errors.push('MAX_TRADE_AMOUNT muss größer als MIN_TRADE_AMOUNT sein');
-    }
-
-    if (this.maxPortfolioRisk < 1 || this.maxPortfolioRisk > 100) {
-      errors.push('MAX_PORTFOLIO_RISK muss zwischen 1 und 100 liegen');
-    }
-
-    if (this.maxPositionSize < 1 || this.maxPositionSize > 50) {
-      errors.push('MAX_POSITION_SIZE muss zwischen 1 und 50 liegen');
-    }
-
-    // Prüfe Security Settings in Production
-    if (this.isProduction) {
-      if (this.encryptionKey === 'default-key-change-in-production') {
-        errors.push('ENCRYPTION_KEY muss in Produktion geändert werden');
-      }
-
-      if (this.sessionSecret === 'default-secret-change-in-production') {
-        errors.push('SESSION_SECRET muss in Produktion geändert werden');
-      }
-
-      if (!this.enableApiAuth) {
-        warnings.push('API-Authentifizierung ist in Produktion deaktiviert');
-      }
-    }
-
-    // Prüfe Performance Settings
-    if (this.cacheMaxSize < 100 || this.cacheMaxSize > 100000) {
-      warnings.push('CACHE_MAX_SIZE sollte zwischen 100 und 100000 liegen');
-    }
-
-    if (this.cacheTtl < 60 || this.cacheTtl > 3600) {
-      warnings.push('CACHE_TTL sollte zwischen 60 und 3600 Sekunden liegen');
-    }
-
-    // Prüfe Notification Settings
-    if (this.enableEmailNotifications && !this.notificationEmail) {
-      warnings.push(
-        'Email-Benachrichtigungen aktiviert, aber keine E-Mail-Adresse konfiguriert',
-      );
-    }
-
-    // Warnungen ausgeben
-    if (warnings.length > 0) {
-      this.logger.warn('Konfigurationswarnungen:');
-      warnings.forEach(warning => this.logger.warn(` - ${warning}`));
-    }
-
-    // Fehler ausgeben falls vorhanden
     if (errors.length > 0) {
-      this.logger.error('Konfigurationsfehler:');
-      errors.forEach(error => this.logger.error(` - ${error}`));
-      return false;
+      const errorMessage = `Configuration validation failed: ${errors.join(', ')}`;
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
     }
 
-    this.logger.log('✅ Konfiguration erfolgreich validiert');
-    return true;
+    this.logger.log('Configuration validated successfully');
   }
 
-  // Hilfsmethode für API-Konfiguration
-  getApiConfig(provider: 'alphavantage' | 'polygon' | 'finnhub') {
-    switch (provider) {
-      case 'alphavantage':
-        return {
-          apiKey: this.alphaVantageApiKey,
-          rateLimit: this.alphaVantageRateLimit,
-          baseUrl: 'https://www.alphavantage.co/query',
-        };
-      case 'polygon':
-        return {
-          apiKey: this.polygonApiKey,
-          rateLimit: this.polygonRateLimit,
-          baseUrl: 'https://api.polygon.io',
-        };
-      case 'finnhub':
-        return {
-          apiKey: this.finnhubApiKey,
-          rateLimit: this.finnhubRateLimit,
-          baseUrl: 'https://finnhub.io/api/v1',
-        };
-      default:
-        throw new Error(`Unbekannter Provider: ${provider}`);
-    }
+  /**
+   * Getter-Methoden für Konfigurationswerte
+   */
+  get environment(): string {
+    return this.config.environment;
   }
 
-  // Cache Konfiguration
+  get port(): number {
+    return this.config.port;
+  }
+
+  get host(): string {
+    return this.config.host;
+  }
+
+  get cors(): AppConfig['cors'] {
+    return this.config.cors;
+  }
+
+  get logging(): AppConfig['logging'] {
+    return this.config.logging;
+  }
+
+  get database(): DatabaseConfig {
+    return this.config.database;
+  }
+
+  get cache(): CacheConfig {
+    return this.config.cache;
+  }
+
+  get apis(): AppConfig['apis'] {
+    return this.config.apis;
+  }
+
+  get ml(): AppConfig['ml'] {
+    return this.config.ml;
+  }
+
+  get scheduling(): AppConfig['scheduling'] {
+    return this.config.scheduling;
+  }
+
+  // Legacy-Getter für Backward-Kompatibilität
+  get databaseUrl(): string {
+    return this.config.database.url;
+  }
+
   get cacheEnabled(): boolean {
-    return this.nestConfigService.get<boolean>('CACHE_ENABLED', true);
+    return this.config.cache.enabled;
   }
 
   get cacheTtl(): number {
-    return this.nestConfigService.get<number>('CACHE_TTL', 300); // 5 Minuten
+    return this.config.cache.ttl;
   }
 
   get cacheMaxSize(): number {
-    return this.nestConfigService.get<number>('CACHE_MAX_SIZE', 1000);
+    return this.config.cache.maxSize;
   }
 
-  // Performance Monitoring
-  get enablePerformanceMonitoring(): boolean {
-    return this.nestConfigService.get<boolean>(
-      'ENABLE_PERFORMANCE_MONITORING',
-      true,
-    );
+  get alphaVantageApiKey(): string | undefined {
+    return this.config.apis.alphaVantage?.apiKey;
   }
 
-  get performanceMetricsInterval(): number {
-    return this.nestConfigService.get<number>(
-      'PERFORMANCE_METRICS_INTERVAL',
-      60000,
-    ); // 1 Minute
+  get polygonApiKey(): string | undefined {
+    return this.config.apis.polygon?.apiKey;
   }
 
-  // Security
-  get encryptionKey(): string {
-    return this.nestConfigService.get<string>(
-      'ENCRYPTION_KEY',
-      'default-key-change-in-production',
-    );
+  get finnhubApiKey(): string | undefined {
+    return this.config.apis.finnhub?.apiKey;
   }
 
-  get sessionSecret(): string {
-    return this.nestConfigService.get<string>(
-      'SESSION_SECRET',
-      'default-secret-change-in-production',
-    );
+  get mlServiceUrl(): string {
+    return this.config.ml.serviceUrl;
   }
 
-  get enableApiAuth(): boolean {
-    return this.nestConfigService.get<boolean>('ENABLE_API_AUTH', false);
+  get mlEnabled(): boolean {
+    return this.config.ml.enabled;
   }
 
-  // Trading Limits
-  get maxDailyTrades(): number {
-    return this.nestConfigService.get<number>('MAX_DAILY_TRADES', 100);
+  get mlTimeout(): number {
+    return this.config.ml.timeout;
   }
 
-  get maxTradeAmount(): number {
-    return this.nestConfigService.get<number>('MAX_TRADE_AMOUNT', 100000); // $100k
+  get schedulingEnabled(): boolean {
+    return this.config.scheduling.enabled;
   }
 
-  get minTradeAmount(): number {
-    return this.nestConfigService.get<number>('MIN_TRADE_AMOUNT', 100); // $100
+  get schedulingTimezone(): string {
+    return this.config.scheduling.timezone;
   }
 
-  get enablePaperTrading(): boolean {
-    return this.nestConfigService.get<boolean>('ENABLE_PAPER_TRADING', true);
+  /**
+   * Cron-Schedule-Getter
+   */
+  get dataIngestionCron(): string {
+    return this.getString('DATA_INGESTION_CRON', '*/30 9-17 * * 1-5');
   }
 
-  // Risk Management
-  get maxPortfolioRisk(): number {
-    return this.nestConfigService.get<number>('MAX_PORTFOLIO_RISK', 20); // 20%
+  get technicalAnalysisCron(): string {
+    return this.getString('TECHNICAL_ANALYSIS_CRON', '5 * * * *');
   }
 
-  get maxPositionSize(): number {
-    return this.nestConfigService.get<number>('MAX_POSITION_SIZE', 10); // 10% des Portfolios
+  get mlTrainingCron(): string {
+    return this.getString('ML_TRAINING_CRON', '0 2 * * 1-5');
   }
 
-  get stopLossPercentage(): number {
-    return this.nestConfigService.get<number>('STOP_LOSS_PERCENTAGE', 5); // 5% Stop Loss
+  get predictionValidationCron(): string {
+    return this.getString('PREDICTION_VALIDATION_CRON', '0 4 * * 1-5');
   }
 
-  get takeProfitPercentage(): number {
-    return this.nestConfigService.get<number>('TAKE_PROFIT_PERCENTAGE', 15); // 15% Take Profit
+  get dataCleanupCron(): string {
+    return this.getString('DATA_CLEANUP_CRON', '0 3 * * 6');
   }
 
-  // Data Quality
-  get minDataQualityScore(): number {
-    return this.nestConfigService.get<number>('MIN_DATA_QUALITY_SCORE', 80); // 80%
+  get dailyPredictionCron(): string {
+    return this.getString('DAILY_PREDICTION_CRON', '30 6 * * 1-5');
   }
 
-  get maxDataAge(): number {
-    return this.nestConfigService.get<number>('MAX_DATA_AGE', 86400); // 24 Stunden in Sekunden
+  get dataIntegrityCron(): string {
+    return this.getString('DATA_INTEGRITY_CRON', '0 1 * * *');
   }
 
-  // Notification Settings
+  /**
+   * Monitoring-Konfiguration
+   */
+  get enableCronMonitoring(): boolean {
+    return this.getBoolean('ENABLE_CRON_MONITORING', true);
+  }
+
+  get cronJobTimeout(): number {
+    return this.getNumber('CRON_JOB_TIMEOUT', 900000); // 15 Minuten
+  }
+
+  get enableCronNotifications(): boolean {
+    return this.getBoolean('ENABLE_CRON_NOTIFICATIONS', true);
+  }
+
+  get cronFailureThreshold(): number {
+    return this.getNumber('CRON_FAILURE_THRESHOLD', 2);
+  }
+
+  /**
+   * E-Mail-Benachrichtigungen
+   */
   get enableEmailNotifications(): boolean {
-    return this.nestConfigService.get<boolean>(
-      'ENABLE_EMAIL_NOTIFICATIONS',
-      false,
-    );
+    return this.getBoolean('ENABLE_EMAIL_NOTIFICATIONS', false);
   }
 
-  get notificationEmail(): string {
-    return this.nestConfigService.get<string>('NOTIFICATION_EMAIL', '');
+  get emailConfig(): {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    pass: string;
+    from: string;
+  } {
+    return {
+      host: this.getString('EMAIL_HOST', 'smtp.gmail.com'),
+      port: this.getNumber('EMAIL_PORT', 587),
+      secure: this.getBoolean('EMAIL_SECURE', false),
+      user: this.getString('EMAIL_USER', ''),
+      pass: this.getString('EMAIL_PASS', ''),
+      from: this.getString('EMAIL_FROM', ''),
+    };
   }
 
-  get criticalAlertThreshold(): number {
-    return this.nestConfigService.get<number>('CRITICAL_ALERT_THRESHOLD', 95); // 95%
+  /**
+   * Redis-Konfiguration
+   */
+  get redisUrl(): string {
+    const password = this.getString('REDIS_PASSWORD', '');
+    const host = this.getString('REDIS_HOST', 'localhost');
+    const port = this.getNumber('REDIS_PORT', 6379);
+
+    if (password) {
+      return `redis://:${password}@${host}:${port}`;
+    }
+    return `redis://${host}:${port}`;
   }
 
-  // Backup Settings
-  get enableAutoBackup(): boolean {
-    return this.nestConfigService.get<boolean>('ENABLE_AUTO_BACKUP', true);
+  /**
+   * Hilfsmethoden für Konfigurationswerte
+   */
+  private getEnvironment(): 'development' | 'staging' | 'production' {
+    const env = this.getString('NODE_ENV', 'development');
+    if (['development', 'staging', 'production'].includes(env)) {
+      return env as 'development' | 'staging' | 'production';
+    }
+    return 'development';
   }
 
-  get backupInterval(): string {
-    return this.nestConfigService.get<string>('BACKUP_INTERVAL', '0 3 * * *'); // Täglich um 3 Uhr
+  private getDatabaseType(): 'postgresql' | 'sqlite' | 'mysql' {
+    const url = this.getString('DATABASE_URL', '');
+    if (url.includes('postgresql') || url.includes('postgres')) {
+      return 'postgresql';
+    } else if (url.includes('sqlite')) {
+      return 'sqlite';
+    } else if (url.includes('mysql')) {
+      return 'mysql';
+    }
+    return 'postgresql'; // Default
   }
 
-  get backupRetentionDays(): number {
-    return this.nestConfigService.get<number>('BACKUP_RETENTION_DAYS', 30);
+  private getString(key: string, defaultValue: string): string {
+    return this.nestConfigService.get<string>(key) || defaultValue;
   }
 
-  get backupPath(): string {
-    return this.nestConfigService.get<string>('BACKUP_PATH', './backups');
+  private getNumber(key: string, defaultValue: number): number {
+    const value = this.nestConfigService.get<string>(key);
+    if (value === undefined || value === null) {
+      return defaultValue;
+    }
+    const num = parseInt(value, 10);
+    return isNaN(num) ? defaultValue : num;
   }
 
-  // Feature Flags
-  get enableMLPredictions(): boolean {
-    return this.nestConfigService.get<boolean>('ENABLE_ML_PREDICTIONS', true);
+  private getBoolean(key: string, defaultValue: boolean): boolean {
+    const value = this.nestConfigService.get<string>(key);
+    if (value === undefined || value === null) {
+      return defaultValue;
+    }
+    return value.toLowerCase() === 'true' || value === '1';
   }
 
-  get enableAdvancedAnalytics(): boolean {
-    return this.nestConfigService.get<boolean>(
-      'ENABLE_ADVANCED_ANALYTICS',
-      true,
-    );
+  private getStringArray(key: string, defaultValue: string[]): string[] {
+    const value = this.nestConfigService.get<string>(key);
+    if (!value) {
+      return defaultValue;
+    }
+    return value.split(',').map(item => item.trim());
   }
 
-  get enableRealTimeData(): boolean {
-    return this.nestConfigService.get<boolean>('ENABLE_REAL_TIME_DATA', false);
+  /**
+   * Prüft ob eine API konfiguriert ist
+   */
+  isApiConfigured(apiName: string): boolean {
+    const api = this.config.apis[apiName as keyof AppConfig['apis']];
+    return api !== undefined && !!api.apiKey;
   }
 
-  get enableSentimentAnalysis(): boolean {
-    return this.nestConfigService.get<boolean>(
-      'ENABLE_SENTIMENT_ANALYSIS',
-      false,
-    );
+  /**
+   * Holt alle konfigurierten APIs
+   */
+  getConfiguredApis(): string[] {
+    return Object.entries(this.config.apis)
+      .filter(([_, config]) => config !== undefined)
+      .map(([name, _]) => name);
   }
 
-  // Development Settings
-  get isDevelopment(): boolean {
-    return (
-      this.nestConfigService.get<string>('NODE_ENV', 'development') ===
-      'development'
-    );
-  }
+  /**
+   * Exportiert die gesamte Konfiguration (ohne sensitive Daten)
+   */
+  exportConfig(): Omit<AppConfig, 'apis'> & {
+    apis: Record<string, Omit<ApiConfig, 'apiKey'> & { configured: boolean }>;
+  } {
+    const exportedApis: Record<
+      string,
+      Omit<ApiConfig, 'apiKey'> & { configured: boolean }
+    > = {};
 
-  get isProduction(): boolean {
-    return (
-      this.nestConfigService.get<string>('NODE_ENV', 'development') ===
-      'production'
-    );
-  }
+    Object.entries(this.config.apis).forEach(([name, config]) => {
+      if (config) {
+        const { apiKey, ...rest } = config;
+        exportedApis[name] = { ...rest, configured: !!apiKey };
+      }
+    });
 
-  get enableDebugMode(): boolean {
-    return this.nestConfigService.get<boolean>(
-      'ENABLE_DEBUG_MODE',
-      this.isDevelopment,
-    );
-  }
-
-  get mockDataInDev(): boolean {
-    return this.nestConfigService.get<boolean>('MOCK_DATA_IN_DEV', true);
+    return {
+      ...this.config,
+      apis: exportedApis,
+    };
   }
 }

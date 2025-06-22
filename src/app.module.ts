@@ -3,15 +3,16 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
 // Eigene Module
-import { CommonModule } from './common/common.module';
-import { PersistenceModule } from './persistence/persistence.module';
-import { DataIngestionModule } from './data-ingestion/data-ingestion.module';
 import { AnalysisEngineModule } from './analysis-engine/analysis-engine.module';
-import { MlPredictionModule } from './ml-prediction/ml-prediction.module';
-import { SchedulingModule } from './scheduling/scheduling.module';
-import { CliModule } from './cli/cli.module';
-import { PortfolioModule } from './portfolio/portfolio.module';
 import { AutomationModule } from './automation/automation.module';
+import { CliModule } from './cli/cli.module';
+import { CommonModule } from './common/common.module';
+import { DataIngestionModule } from './data-ingestion/data-ingestion.module';
+import { HealthModule } from './health/health.module';
+import { MlPredictionModule } from './ml-prediction/ml-prediction.module';
+import { PersistenceModule } from './persistence/persistence.module';
+import { PortfolioModule } from './portfolio/portfolio.module';
+import { SchedulingModule } from './scheduling/scheduling.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AutomationModule } from './automation/automation.module';
     PortfolioModule,
     CliModule,
     AutomationModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

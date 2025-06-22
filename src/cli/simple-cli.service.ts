@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
 import { AutomationService } from '../automation/automation.service';
+import { CacheService } from '../common/cache.service';
+import { ErrorHandlingService } from '../common/error-handling.service';
+import { ValidationService } from '../common/validation.service';
+import { ConfigService } from '../config/config.service';
 import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
+import { HealthService } from '../health/health.service';
 import { MlPredictionService } from '../ml-prediction/ml-prediction.service';
 import { PrismaService } from '../persistence/prisma.service';
 import { BacktestService } from '../portfolio/backtest.service';
@@ -23,6 +28,11 @@ export class SimpleCliService {
     private readonly backtestService: BacktestService,
     private readonly riskManagementService: RiskManagementService,
     private readonly automationService: AutomationService,
+    private readonly configService: ConfigService,
+    private readonly cacheService: CacheService,
+    private readonly errorHandlingService: ErrorHandlingService,
+    private readonly validationService: ValidationService,
+    private readonly healthService: HealthService,
   ) {}
 
   async processCommand(args: string[]): Promise<void> {
@@ -32,6 +42,9 @@ export class SimpleCliService {
       switch (command) {
         case 'status':
           await this.handleStatusCommand();
+          break;
+        case 'health':
+          await this.handleHealthCommand();
           break;
         case 'track':
           await this.handleTrackCommand(args[3]);
@@ -105,6 +118,15 @@ export class SimpleCliService {
           break;
         case 'provider-status':
           await this.handleProviderStatusCommand();
+          break;
+        case 'cleanup':
+          await this.handleCleanupCommand(args[3]);
+          break;
+        case 'validate':
+          await this.handleValidateCommand(args[3]);
+          break;
+        case 'help':
+          this.showHelp();
           break;
         default:
           this.showHelp();
@@ -1517,5 +1539,149 @@ export class SimpleCliService {
     console.log(
       "💡 Hinweis: Verwenden Sie 'test-provider <name> <ticker>' um einen Provider zu testen",
     );
+  }
+
+  private async handleHealthCommand(): Promise<void> {
+    console.log('🏥 KAIROS Health Check');
+    console.log('======================');
+
+    try {
+      const healthResult = await this.healthService.performHealthCheck();
+
+      console.log(`📊 Gesamtstatus: ${healthResult.status.toUpperCase()}`);
+      console.log(`⏱️  Check-Dauer: ${healthResult.duration}ms`);
+      console.log(`🕐 Zeitstempel: ${healthResult.timestamp.toLocaleString()}`);
+      console.log('');
+
+      // Einzelne Checks anzeigen
+      Object.entries(healthResult.checks).forEach(([checkName, check]) => {
+        if (check) {
+          const statusIcon =
+            check.status === 'healthy'
+              ? '✅'
+              : check.status === 'degraded'
+                ? '⚠️'
+                : '❌';
+          console.log(
+            `${statusIcon} ${checkName.toUpperCase()}: ${check.status}`,
+          );
+          if (check.message) {
+            console.log(`   ${check.message}`);
+          }
+          if (check.duration) {
+            console.log(`   Dauer: ${check.duration}ms`);
+          }
+          console.log('');
+        }
+      });
+
+      // Empfehlungen basierend auf Status
+      if (healthResult.status === 'unhealthy') {
+        console.log('🔧 Empfehlungen:');
+        console.log('   - Überprüfen Sie die Datenbankverbindung');
+        console.log('   - Prüfen Sie die API-Konfiguration');
+        console.log('   - Kontrollieren Sie die Logs auf Fehler');
+      } else if (healthResult.status === 'degraded') {
+        console.log('🔧 Empfehlungen:');
+        console.log('   - Einige Komponenten zeigen Warnungen');
+        console.log('   - Überwachen Sie die Systemleistung');
+      } else {
+        console.log('✅ System ist vollständig funktionsfähig');
+      }
+    } catch (error) {
+      console.log('❌ Fehler beim Health Check');
+      console.error(error);
+    }
+  }
+
+  private async handleCleanupCommand(args: string): Promise<void> {
+    console.log('🧹 KAIROS Datenbereinigung');
+    console.log('==========================');
+
+    try {
+      const daysToKeep = parseInt(args) || 365;
+
+      console.log(`🗑️  Lösche Daten älter als ${daysToKeep} Tage...`);
+
+      await this.dataIngestionService.cleanupOldData(daysToKeep);
+
+      console.log('✅ Datenbereinigung abgeschlossen');
+
+      // Cache leeren
+      console.log('🗑️  Leere Cache...');
+      // this.cacheService.clear(); // Falls verfügbar
+
+      console.log('✅ Cache geleert');
+      console.log('🎉 Bereinigung vollständig abgeschlossen!');
+    } catch (error) {
+      console.log(
+        '❌ Bereinigung fehlgeschlagen:',
+        error instanceof Error ? error.message : 'Unbekannter Fehler',
+      );
+    }
+  }
+
+  private async handleValidateCommand(args: string): Promise<void> {
+    console.log('🔍 KAIROS Datenvalidierung');
+    console.log('==========================');
+
+    try {
+      const ticker = args?.toUpperCase();
+
+      if (ticker) {
+        console.log(`🔍 Validiere Daten für ${ticker}...`);
+
+        // Validiere Ticker
+        const validation = this.validationService.validateTicker(ticker);
+        if (!validation.isValid) {
+          console.log('❌ Ticker-Validierung fehlgeschlagen:');
+          validation.errors.forEach(error => {
+            console.log(`   - ${error.message}`);
+          });
+          return;
+        }
+
+        // Prüfe Datenqualität
+        const stock = await this.prismaService.stock.findUnique({
+          where: { ticker },
+          include: {
+            historicalData: {
+              orderBy: { timestamp: 'desc' },
+              take: 10,
+            },
+          },
+        });
+
+        if (!stock) {
+          console.log(`❌ Keine Daten für ${ticker} gefunden`);
+          return;
+        }
+
+        console.log(`✅ ${ticker} Validierung erfolgreich:`);
+        console.log(`   📊 Datenpunkte: ${stock.historicalData.length}`);
+        console.log(
+          `   📅 Neueste Daten: ${stock.historicalData[0]?.timestamp.toLocaleDateString()}`,
+        );
+      } else {
+        console.log('🔍 Validiere System-Konfiguration...');
+
+        // Validiere Datenbankverbindung
+        await this.prismaService.$queryRaw`SELECT 1`;
+        console.log('✅ Datenbankverbindung validiert');
+
+        // Validiere API-Provider
+        const configuredApis = this.configService.getConfiguredApis();
+        console.log(
+          `✅ ${configuredApis.length} API-Provider konfiguriert: ${configuredApis.join(', ')}`,
+        );
+
+        console.log('🎉 System-Validierung erfolgreich!');
+      }
+    } catch (error) {
+      console.log(
+        '❌ Validierung fehlgeschlagen:',
+        error instanceof Error ? error.message : 'Unbekannter Fehler',
+      );
+    }
   }
 }

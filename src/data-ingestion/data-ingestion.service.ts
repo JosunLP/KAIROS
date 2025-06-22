@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { CacheService } from '../common/cache.service';
+import { ErrorHandlingService } from '../common/error-handling.service';
+import { ValidationService } from '../common/validation.service';
+import { ConfigService } from '../config/config.service';
 import { PrismaService } from '../persistence/prisma.service';
 import { AlphaVantageProvider } from './providers/alpha-vantage.provider';
 import { FinnhubProvider } from './providers/finnhub.provider';
@@ -25,13 +28,42 @@ export interface DataProvider {
   fetchLatestData(ticker: string): Promise<MarketDataPoint | null>;
 }
 
+export interface DataIngestionStats {
+  totalStocks: number;
+  activeStocks: number;
+  totalDataPoints: number;
+  lastUpdate: Date;
+  oldestData?: Date;
+  newestData?: Date;
+  availableProviders: string[];
+  providerStats: Record<
+    string,
+    {
+      requests: number;
+      errors: number;
+      successRate: number;
+    }
+  >;
+}
+
 @Injectable()
 export class DataIngestionService {
   private readonly logger = new Logger(DataIngestionService.name);
   private readonly providers: DataProvider[];
+  private readonly stats = {
+    providerStats: {} as Record<
+      string,
+      { requests: number; errors: number; successRate: number }
+    >,
+    lastUpdate: new Date(),
+  };
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly config: ConfigService,
+    private readonly validation: ValidationService,
+    private readonly errorHandling: ErrorHandlingService,
+    private readonly cache: CacheService,
     private readonly alphaVantage: AlphaVantageProvider,
     private readonly polygon: PolygonProvider,
     private readonly finnhub: FinnhubProvider,
@@ -44,6 +76,15 @@ export class DataIngestionService {
       this.finnhub,
       this.mockProvider,
     ];
+
+    // Initialisiere Statistiken für alle Provider
+    this.providers.forEach(provider => {
+      this.stats.providerStats[provider.name] = {
+        requests: 0,
+        errors: 0,
+        successRate: 100,
+      };
+    });
   }
 
   /**
@@ -57,20 +98,26 @@ export class DataIngestionService {
 
       this.logger.log(`Aktualisiere Daten für ${activeStocks.length} Aktien`);
 
-      for (const stock of activeStocks) {
-        try {
-          await this.fetchLatestDataForStock(stock.ticker);
-          // Rate Limiting - Pause zwischen API-Aufrufen
-          await this.delay(this.getDelayBetweenRequests());
-        } catch (error) {
-          this.logger.error(
-            `Fehler beim Abrufen der Daten für ${stock.ticker}`,
-            error,
-          );
-        }
-      }
+      const results = await Promise.allSettled(
+        activeStocks.map(stock => this.fetchLatestDataForStock(stock.ticker)),
+      );
+
+      const successful = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      this.logger.log(
+        `✅ ${successful} Aktien erfolgreich aktualisiert, ${failed} fehlgeschlagen`,
+      );
+      this.stats.lastUpdate = new Date();
     } catch (error) {
-      this.logger.error('Fehler beim Abrufen der aktuellsten Daten', error);
+      await this.errorHandling.handleError(
+        error as Error,
+        {
+          component: 'DATA_INGESTION',
+          operation: 'fetchLatestDataForAllTrackedStocks',
+        },
+        'high',
+      );
       throw error;
     }
   }
@@ -80,45 +127,80 @@ export class DataIngestionService {
    */
   async addNewStock(ticker: string, name?: string): Promise<void> {
     try {
+      // Validierung
+      const validation = this.validation.validateTicker(ticker);
+      if (!validation.isValid) {
+        throw new Error(
+          `Invalid ticker: ${validation.errors.map(e => e.message).join(', ')}`,
+        );
+      }
+
+      const cleanTicker = ticker.trim().toUpperCase();
+
       // Prüfen ob bereits vorhanden
       const existing = await this.prisma.stock.findUnique({
-        where: { ticker },
+        where: { ticker: cleanTicker },
       });
 
       if (existing) {
-        this.logger.warn(`Aktie ${ticker} wird bereits verfolgt`);
+        this.logger.warn(`Aktie ${cleanTicker} wird bereits verfolgt`);
         return;
-      } // Name automatisch ermitteln falls nicht angegeben
+      }
+
+      // Name automatisch ermitteln falls nicht angegeben
       let stockName = name;
       if (!stockName) {
         try {
           // Versuche über Alpha Vantage die aktuellen Daten zu ermitteln
-          await this.alphaVantage.fetchLatestData(ticker);
-          stockName = ticker; // Verwende erstmal den Ticker als Namen
+          const latestData =
+            await this.alphaVantage.fetchLatestData(cleanTicker);
+          if (latestData) {
+            stockName = cleanTicker; // Verwende erstmal den Ticker als Namen
+          }
         } catch (error) {
           this.logger.warn(
-            `Name für ${ticker} konnte nicht ermittelt werden, verwende Ticker`,
+            `Name für ${cleanTicker} konnte nicht ermittelt werden, verwende Ticker`,
           );
-          stockName = ticker;
+          stockName = cleanTicker;
         }
       }
 
       // Aktie in Datenbank hinzufügen
       await this.prisma.stock.create({
         data: {
-          ticker,
-          name: stockName || ticker, // Fallback auf ticker wenn Name nicht verfügbar
+          ticker: cleanTicker,
+          name: stockName || cleanTicker,
         },
       });
 
-      this.logger.log(`✅ Neue Aktie hinzugefügt: ${ticker} (${stockName})`);
+      this.logger.log(
+        `✅ Neue Aktie hinzugefügt: ${cleanTicker} (${stockName})`,
+      );
+
+      // Cache invalidieren
+      this.cache.deleteByPrefix(`stock:${cleanTicker}`);
 
       // Erste historische Daten abrufen
-      await this.fetchLatestDataForStock(ticker);
+      await this.fetchLatestDataForStock(cleanTicker);
     } catch (error) {
-      this.logger.error(`Fehler beim Hinzufügen der Aktie ${ticker}:`, error);
+      await this.errorHandling.handleError(
+        error as Error,
+        {
+          component: 'DATA_INGESTION',
+          operation: 'addNewStock',
+          metadata: { ticker, name },
+        },
+        'medium',
+      );
       throw error;
     }
+  }
+
+  /**
+   * Fügt eine Aktie zur Verfolgung hinzu (Alias für addNewStock)
+   */
+  async addStockToTracking(ticker: string, name?: string): Promise<void> {
+    return this.addNewStock(ticker, name);
   }
 
   /**
@@ -126,62 +208,76 @@ export class DataIngestionService {
    */
   async fetchLatestDataForStock(ticker: string): Promise<void> {
     try {
-      this.logger.log(`📡 Hole Daten für ${ticker}...`);
-
-      let data: MarketDataPoint[] = [];
-      let lastError: Error | null = null;
-
-      // Durchlaufe alle Provider in der Reihenfolge ihrer Priorität
-      for (const provider of this.providers) {
-        if (!provider.isConfigured()) {
-          this.logger.debug(
-            `${provider.name} nicht konfiguriert für ${ticker}, überspringe...`,
-          );
-          continue;
-        }
-
-        try {
-          this.logger.debug(`Versuche ${provider.name} für ${ticker}...`);
-          data = await provider.fetchHistoricalData(ticker, 30); // Letzten 30 Tage
-
-          if (data && data.length > 0) {
-            this.logger.log(
-              `✅ ${data.length} Datenpunkte für ${ticker} von ${provider.name} erhalten`,
-            );
-            break; // Erfolgreich, stoppe die Schleife
-          } else {
-            this.logger.warn(
-              `${provider.name} hat keine Daten für ${ticker} zurückgegeben`,
-            );
-          }
-        } catch (error) {
-          lastError = error as Error;
-          this.logger.warn(
-            `${provider.name} fehlgeschlagen für ${ticker}: ${(error as Error).message}`,
-          );
-          continue; // Versuche nächsten Provider
-        }
+      // Validierung
+      const validation = this.validation.validateTicker(ticker);
+      if (!validation.isValid) {
+        throw new Error(
+          `Invalid ticker: ${validation.errors.map(e => e.message).join(', ')}`,
+        );
       }
 
-      if (!data || data.length === 0) {
-        if (lastError) {
-          this.logger.error(
-            `Alle Provider fehlgeschlagen für ${ticker}. Letzter Fehler:`,
-            lastError,
-          );
-        }
-        this.logger.warn(`Keine Daten für ${ticker} erhalten`);
+      const cleanTicker = ticker.trim().toUpperCase();
+
+      // Cache prüfen
+      const cacheKey = `latest:${cleanTicker}`;
+      const cached = this.cache.get<MarketDataPoint>(cacheKey);
+      if (cached) {
+        this.logger.debug(`Cache hit für ${cleanTicker}`);
         return;
       }
 
-      // Daten in Datenbank speichern
-      await this.saveMarketData(ticker, data);
+      // Provider finden
+      const provider = this.getAvailableProvider();
+      if (!provider) {
+        throw new Error('Kein konfigurierter Datenanbieter verfügbar');
+      }
 
-      this.logger.log(
-        `✅ ${data.length} Datenpunkte für ${ticker} gespeichert`,
+      this.logger.debug(
+        `Hole aktuelle Daten für ${cleanTicker} von ${provider.name}`,
+      );
+
+      // Statistiken aktualisieren
+      this.stats.providerStats[provider.name].requests++;
+
+      const latestData = await provider.fetchLatestData(cleanTicker);
+      if (!latestData) {
+        this.logger.warn(`Keine aktuellen Daten für ${cleanTicker} erhalten`);
+        this.stats.providerStats[provider.name].errors++;
+        return;
+      }
+
+      // Daten validieren
+      const validData = this.validateMarketData([latestData]);
+      if (validData.length === 0) {
+        this.logger.warn(`Ungültige Daten für ${cleanTicker} nach Validierung`);
+        this.stats.providerStats[provider.name].errors++;
+        return;
+      }
+
+      // Daten speichern
+      await this.saveMarketData(cleanTicker, validData);
+
+      // Cache setzen (5 Minuten TTL)
+      this.cache.set(cacheKey, latestData, { ttl: 300 });
+
+      // Erfolgsrate aktualisieren
+      const stats = this.stats.providerStats[provider.name];
+      stats.successRate =
+        ((stats.requests - stats.errors) / stats.requests) * 100;
+
+      this.logger.debug(
+        `✅ Aktuelle Daten für ${cleanTicker} erfolgreich aktualisiert`,
       );
     } catch (error) {
-      this.logger.error(`Fehler beim Abrufen der Daten für ${ticker}:`, error);
+      await this.errorHandling.handleError(
+        error as Error,
+        {
+          component: 'DATA_INGESTION',
+          operation: 'fetchLatestDataForStock',
+          metadata: { ticker },
+        },
+        'medium',
+      );
       throw error;
     }
   }
@@ -193,76 +289,105 @@ export class DataIngestionService {
     ticker: string,
     days: number = 365,
   ): Promise<void> {
-    const provider = this.getAvailableProvider();
-    if (!provider) {
-      throw new Error('Kein konfigurierter Datenanbieter verfügbar');
-    }
-
     try {
+      // Validierung
+      const validation = this.validation.validateTicker(ticker);
+      if (!validation.isValid) {
+        throw new Error(
+          `Invalid ticker: ${validation.errors.map(e => e.message).join(', ')}`,
+        );
+      }
+
+      if (days < 1 || days > 365 * 5) {
+        throw new Error('Days must be between 1 and 1825 (5 years)');
+      }
+
+      const cleanTicker = ticker.trim().toUpperCase();
+      const provider = this.getAvailableProvider();
+      if (!provider) {
+        throw new Error('Kein konfigurierter Datenanbieter verfügbar');
+      }
+
       this.logger.log(
-        `Hole historische Daten für ${ticker} (${days} Tage) von ${provider.name}`,
+        `Hole historische Daten für ${cleanTicker} (${days} Tage) von ${provider.name}`,
       );
 
-      const historicalData = await provider.fetchHistoricalData(ticker, days);
+      const historicalData = await provider.fetchHistoricalData(
+        cleanTicker,
+        days,
+      );
       if (historicalData.length === 0) {
-        this.logger.warn(`Keine historischen Daten für ${ticker} erhalten`);
+        this.logger.warn(
+          `Keine historischen Daten für ${cleanTicker} erhalten`,
+        );
         return;
       }
 
-      await this.saveMarketData(ticker, historicalData);
+      // Daten validieren
+      const validData = this.validateMarketData(historicalData);
+      if (validData.length === 0) {
+        this.logger.warn(
+          `Keine gültigen historischen Daten für ${cleanTicker} nach Validierung`,
+        );
+        return;
+      }
+
+      await this.saveMarketData(cleanTicker, validData);
       this.logger.log(
-        `${historicalData.length} historische Datenpunkte für ${ticker} gespeichert`,
+        `${validData.length} historische Datenpunkte für ${cleanTicker} gespeichert`,
       );
     } catch (error) {
-      this.logger.error(
-        `Fehler beim Abrufen historischer Daten für ${ticker}`,
-        error,
+      await this.errorHandling.handleError(
+        error as Error,
+        {
+          component: 'DATA_INGESTION',
+          operation: 'fetchHistoricalDataForStock',
+          metadata: { ticker, days },
+        },
+        'medium',
       );
       throw error;
     }
   }
 
   /**
-   * Fügt eine neue Aktie zur Verfolgung hinzu
+   * Validiert Marktdaten
    */
-  async addStockToTracking(ticker: string, name?: string): Promise<void> {
-    try {
-      // Prüfe ob Aktie bereits existiert
-      const existing = await this.prisma.stock.findUnique({
-        where: { ticker },
-      });
-
-      if (existing) {
-        if (!existing.isActive) {
-          // Reaktiviere die Aktie
-          await this.prisma.stock.update({
-            where: { ticker },
-            data: { isActive: true },
-          });
-          this.logger.log(`Aktie ${ticker} reaktiviert`);
-        } else {
-          this.logger.log(`Aktie ${ticker} wird bereits verfolgt`);
-        }
-        return;
+  private validateMarketData(data: MarketDataPoint[]): MarketDataPoint[] {
+    return data.filter(point => {
+      // Grundlegende Validierung
+      if (!point.timestamp || isNaN(point.timestamp.getTime())) {
+        return false;
       }
 
-      // Erstelle neue Aktie
-      await this.prisma.stock.create({
-        data: {
-          ticker,
-          name: name || ticker,
-          isActive: true,
-        },
-      });
+      if (
+        point.open <= 0 ||
+        point.high <= 0 ||
+        point.low <= 0 ||
+        point.close <= 0
+      ) {
+        return false;
+      }
 
-      this.logger.log(`Aktie ${ticker} zur Verfolgung hinzugefügt`);
+      if (point.volume < 0) {
+        return false;
+      }
 
-      // Hole initiale historische Daten
-      await this.fetchHistoricalDataForStock(ticker);
-    } catch (error) {
-      this.logger.error(`Fehler beim Hinzufügen der Aktie ${ticker}`, error);
-      throw error;
-    }
+      // Logische Validierung
+      if (point.high < point.low) {
+        return false;
+      }
+
+      if (point.open < point.low || point.open > point.high) {
+        return false;
+      }
+
+      if (point.close < point.low || point.close > point.high) {
+        return false;
+      }
+
+      return true;
+    });
   }
 
   /**
@@ -273,105 +398,154 @@ export class DataIngestionService {
     dataPoints: MarketDataPoint[],
   ): Promise<void> {
     try {
+      // Aktie finden oder erstellen
       const stock = await this.prisma.stock.findUnique({
-        where: { ticker },
+        where: { ticker: ticker.toUpperCase() },
       });
 
       if (!stock) {
-        throw new Error(`Aktie ${ticker} nicht in der Datenbank gefunden`);
+        throw new Error(`Stock ${ticker} not found`);
       }
 
-      // Verwende upsert um Duplikate zu vermeiden
-      for (const point of dataPoints) {
-        await this.prisma.historicalData.upsert({
-          where: {
-            stockId_timestamp: {
-              stockId: stock.id,
-              timestamp: point.timestamp,
-            },
-          },
-          update: {
-            open: point.open,
-            high: point.high,
-            low: point.low,
-            close: point.close,
-            volume: point.volume,
-          },
-          create: {
+      // Daten in Batches speichern
+      const batchSize = 100;
+      for (let i = 0; i < dataPoints.length; i += batchSize) {
+        const batch = dataPoints.slice(i, i + batchSize);
+
+        await this.prisma.historicalData.createMany({
+          data: batch.map(dataPoint => ({
             stockId: stock.id,
-            timestamp: point.timestamp,
-            open: point.open,
-            high: point.high,
-            low: point.low,
-            close: point.close,
-            volume: point.volume,
-          },
+            timestamp: dataPoint.timestamp,
+            open: dataPoint.open,
+            high: dataPoint.high,
+            low: dataPoint.low,
+            close: dataPoint.close,
+            volume: BigInt(dataPoint.volume),
+          })),
         });
       }
+
+      this.logger.debug(
+        `✅ ${dataPoints.length} Datenpunkte für ${ticker} gespeichert`,
+      );
     } catch (error) {
-      this.logger.error(
-        `Fehler beim Speichern der Marktdaten für ${ticker}`,
-        error,
+      await this.errorHandling.handleError(
+        error as Error,
+        {
+          component: 'DATA_INGESTION',
+          operation: 'saveMarketData',
+          metadata: { ticker, dataPointsCount: dataPoints.length },
+        },
+        'high',
       );
       throw error;
     }
   }
 
   /**
-   * Gibt den ersten verfügbaren und konfigurierten Provider zurück
+   * Holt einen verfügbaren Provider
    */
   private getAvailableProvider(): DataProvider | null {
     return this.providers.find(provider => provider.isConfigured()) || null;
   }
 
   /**
-   * Berechnet die Verzögerung zwischen API-Anfragen basierend auf der Konfiguration
+   * Holt Verzögerung zwischen API-Aufrufen
    */
   private getDelayBetweenRequests(): number {
-    const requestsPerMinute = this.configService.get<number>(
-      'API_REQUESTS_PER_MINUTE',
-      5,
-    );
-    return Math.ceil(60000 / requestsPerMinute); // Millisekunden
+    // Dynamische Verzögerung basierend auf Provider-Limits
+    const configuredProviders = this.providers.filter(p =>
+      p.isConfigured(),
+    ).length;
+    return Math.max(1000, 5000 / configuredProviders); // Mindestens 1 Sekunde
   }
 
   /**
-   * Hilfsfunktion für Verzögerungen
+   * Verzögerung
    */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
-   * Gibt Statistiken über die verfügbaren Daten zurück
+   * Gibt erweiterte Datenstatistiken zurück
    */
-  async getDataStatistics(): Promise<any> {
+  async getDataStatistics(): Promise<DataIngestionStats> {
     try {
-      const totalStocks = await this.prisma.stock.count({
+      const totalStocks = await this.prisma.stock.count();
+      const activeStocks = await this.prisma.stock.count({
         where: { isActive: true },
       });
-
       const totalDataPoints = await this.prisma.historicalData.count();
 
+      // Älteste und neueste Daten
       const oldestData = await this.prisma.historicalData.findFirst({
         orderBy: { timestamp: 'asc' },
+        select: { timestamp: true },
       });
 
       const newestData = await this.prisma.historicalData.findFirst({
         orderBy: { timestamp: 'desc' },
+        select: { timestamp: true },
       });
+
+      // Verfügbare Provider
+      const availableProviders = this.providers
+        .filter(provider => provider.isConfigured())
+        .map(provider => provider.name);
 
       return {
         totalStocks,
+        activeStocks,
         totalDataPoints,
+        lastUpdate: this.stats.lastUpdate,
         oldestData: oldestData?.timestamp,
         newestData: newestData?.timestamp,
-        availableProviders: this.providers
-          .filter(p => p.isConfigured())
-          .map(p => p.name),
+        availableProviders,
+        providerStats: this.stats.providerStats,
       };
     } catch (error) {
-      this.logger.error('Fehler beim Abrufen der Datenstatistiken', error);
+      await this.errorHandling.handleError(
+        error as Error,
+        {
+          component: 'DATA_INGESTION',
+          operation: 'getDataStatistics',
+        },
+        'medium',
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Bereinigt alte Daten
+   */
+  async cleanupOldData(daysToKeep: number = 365): Promise<void> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+
+      const result = await this.prisma.historicalData.deleteMany({
+        where: {
+          timestamp: {
+            lt: cutoffDate,
+          },
+        },
+      });
+
+      this.logger.log(
+        `Bereinigung abgeschlossen: ${result.count} alte Datenpunkte gelöscht`,
+      );
+    } catch (error) {
+      await this.errorHandling.handleError(
+        error as Error,
+        {
+          component: 'DATA_INGESTION',
+          operation: 'cleanupOldData',
+          metadata: { daysToKeep },
+        },
+        'medium',
+      );
       throw error;
     }
   }

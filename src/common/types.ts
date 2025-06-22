@@ -17,7 +17,7 @@ export interface HistoricalDataPoint {
   high: number;
   low: number;
   close: number;
-  volume: bigint;
+  volume: number;
 }
 
 export interface TechnicalIndicators {
@@ -298,4 +298,188 @@ export interface TrainingStatus {
   accuracy: number;
   estimatedTimeRemaining: number;
   status: 'IDLE' | 'TRAINING' | 'COMPLETE' | 'ERROR';
+}
+
+// NEW: Enhanced types for better consistency
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  timestamp: Date;
+  requestId?: string;
+}
+
+export interface PaginatedResponse<T = any> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  value?: any;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+  warnings: string[];
+}
+
+export interface PerformanceMetrics {
+  operation: string;
+  duration: number;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
+
+export interface HealthCheckResult {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  checks: {
+    database?: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      duration?: number;
+      metadata?: Record<string, any>;
+    };
+    cache?: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      duration?: number;
+      metadata?: Record<string, any>;
+    };
+    apiProviders?: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      duration?: number;
+      metadata?: Record<string, any>;
+    };
+    mlService?: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      duration?: number;
+      metadata?: Record<string, any>;
+    };
+    dataQuality?: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      duration?: number;
+      metadata?: Record<string, any>;
+    };
+    systemResources?: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      duration?: number;
+      metadata?: Record<string, any>;
+    };
+    errorRate?: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      duration?: number;
+      metadata?: Record<string, any>;
+    };
+    [key: string]:
+      | {
+          status: 'healthy' | 'degraded' | 'unhealthy';
+          message?: string;
+          duration?: number;
+          metadata?: Record<string, any>;
+        }
+      | undefined;
+  };
+  timestamp: Date;
+  duration?: number;
+}
+
+// NEW: Database-specific types
+export interface DatabaseConfig {
+  url: string;
+  type: 'postgresql' | 'sqlite' | 'mysql';
+  poolSize?: number;
+  timeout?: number;
+  ssl?: boolean;
+}
+
+export interface CacheConfig {
+  enabled: boolean;
+  ttl: number;
+  maxSize: number;
+  cleanupInterval: number;
+}
+
+export interface ApiConfig {
+  baseUrl: string;
+  timeout: number;
+  retries: number;
+  rateLimit: number;
+  apiKey?: string;
+}
+
+// NEW: Event types for better event handling
+export interface SystemEvent {
+  id: string;
+  type: string;
+  payload: any;
+  timestamp: Date;
+  source: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface EventHandler {
+  handle(event: SystemEvent): Promise<void>;
+  canHandle(eventType: string): boolean;
+}
+
+// NEW: Configuration types
+export interface AppConfig {
+  environment: 'development' | 'staging' | 'production';
+  port: number;
+  host: string;
+  cors: {
+    enabled: boolean;
+    origins: string[];
+  };
+  logging: {
+    level: string;
+    file: boolean;
+    console: boolean;
+  };
+  database: DatabaseConfig;
+  cache: CacheConfig;
+  apis: {
+    alphaVantage?: ApiConfig;
+    polygon?: ApiConfig;
+    finnhub?: ApiConfig;
+  };
+  ml: {
+    enabled: boolean;
+    serviceUrl: string;
+    timeout: number;
+  };
+  scheduling: {
+    enabled: boolean;
+    timezone: string;
+  };
+}
+
+// Enhanced DataIngestionStats interface
+export interface DataIngestionStats {
+  totalStocks: number;
+  activeStocks: number;
+  totalDataPoints: number;
+  lastUpdate: Date;
+  oldestData?: Date;
+  newestData?: Date;
+  availableProviders?: string[];
+  providerStats: Record<
+    string,
+    {
+      requests: number;
+      errors: number;
+      successRate: number;
+    }
+  >;
 }
