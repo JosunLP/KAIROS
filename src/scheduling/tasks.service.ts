@@ -1,14 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
 import { ConfigService } from '../config/config.service';
 import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
-import { AnalysisEngineService } from '../analysis-engine/analysis-engine.service';
 import { MlPredictionService } from '../ml-prediction/ml-prediction.service';
 import { PrismaService } from '../persistence/prisma.service';
 import { CronMonitoringService } from './cron-monitoring.service';
 
 @Injectable()
-export class TasksService {
+export class TasksService implements OnModuleInit {
   private readonly logger = new Logger(TasksService.name);
 
   constructor(
@@ -19,6 +19,55 @@ export class TasksService {
     private readonly configService: ConfigService,
     private readonly cronMonitoring: CronMonitoringService,
   ) {}
+
+  async onModuleInit() {
+    this.logger.log(
+      'KAIROS TasksService initialisiert, starte initiale Jobs...',
+    );
+    await this.handleAutomatedDataProcessing();
+  }
+
+  /**
+   * Kombinierter Job: Holt Daten, analysiert und trainiert das Modell
+   */
+  @Cron('0 */2 * * *', {
+    // Alle 2 Stunden
+    name: 'automatedDataProcessing',
+    timeZone: 'Europe/Berlin',
+  })
+  async handleAutomatedDataProcessing() {
+    const jobName = 'automated-data-processing';
+    this.cronMonitoring.startJob(jobName);
+    this.logger.log('🚀 Starte automatisierte Datenverarbeitung...');
+
+    try {
+      // 1. Daten holen
+      this.logger.log('Step 1/3: Datenerfassung...');
+      await this.dataIngestion.fetchLatestDataForAllTrackedStocks();
+      this.logger.log('✅ Datenerfassung abgeschlossen.');
+
+      // 2. Technische Analyse durchführen
+      this.logger.log('Step 2/3: Technische Analyse...');
+      await this.analysisEngine.enrichAllData();
+      this.logger.log('✅ Technische Analyse abgeschlossen.');
+
+      // 3. Modell trainieren
+      this.logger.log('Step 3/3: ML-Modell Training...');
+      await this.mlPrediction.trainModel();
+      this.logger.log('✅ ML-Modell Training abgeschlossen.');
+
+      this.cronMonitoring.completeJob(jobName);
+      this.logger.log(
+        '🎉 Automatisierte Datenverarbeitung erfolgreich abgeschlossen!',
+      );
+    } catch (error) {
+      this.cronMonitoring.failJob(jobName, error as Error);
+      this.logger.error(
+        'Fehler bei der automatisierten Datenverarbeitung',
+        error,
+      );
+    }
+  }
 
   /**
    * Holt aktuelle Marktdaten alle 15 Minuten (während Handelszeiten)
