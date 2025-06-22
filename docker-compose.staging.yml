@@ -1,0 +1,53 @@
+# Staging Environment Configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up
+
+services:
+  # Override PostgreSQL for staging
+  postgres:
+    environment:
+      - POSTGRES_DB=kairos_staging
+      - POSTGRES_USER=kairos_staging
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kairos_staging_password}
+    ports:
+      - '5434:5432'
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+
+  # Override ML Service for staging
+  ml-service:
+    environment:
+      - ML_SERVICE_PORT=8082
+      - LOG_LEVEL=info
+    ports:
+      - '8082:8080'
+
+  # Override main application for staging
+  kairos:
+    environment:
+      - NODE_ENV=staging
+      - DATABASE_URL=postgresql://kairos_staging:${POSTGRES_PASSWORD:-kairos_staging_password}@postgres:5432/kairos_staging
+      - ML_SERVICE_URL=http://ml-service:8080
+      - LOG_LEVEL=info
+      - ENABLE_FILE_LOGGING=true
+      - ENABLE_CRON_MONITORING=true
+      - CRON_JOB_TIMEOUT=600000
+      - ENABLE_CRON_NOTIFICATIONS=true
+      # Staging cron schedules (balanced)
+      - DATA_INGESTION_CRON=*/20 9-17 * * 1-5
+      - TECHNICAL_ANALYSIS_CRON=2 * * * *
+      - ML_TRAINING_CRON=0 3 * * 1-5
+      - PREDICTION_VALIDATION_CRON=0 5 * * 1-5
+      - DATA_CLEANUP_CRON=0 4 * * 6
+      - DAILY_PREDICTION_CRON=30 7 * * 1-5
+      - DATA_INTEGRITY_CRON=0 2 * * *
+    ports:
+      - '3001:3000'
+
+  # Enable Redis for staging
+  redis:
+    profiles: []
+
+volumes:
+  postgres_staging_data:
+    driver: local

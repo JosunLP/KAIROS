@@ -1,5 +1,10 @@
 # ML Service Dockerfile für KAIROS
-FROM python:3.11-slim
+# Supports development, staging, and production environments
+
+# Build arguments
+ARG PYTHON_VERSION=3.11
+
+FROM python:${PYTHON_VERSION}-slim
 
 WORKDIR /app
 
@@ -7,6 +12,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Python-Abhängigkeiten kopieren
@@ -32,6 +38,12 @@ EXPOSE 8080
 # Health-Check Endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
+
+# Labels
+LABEL org.opencontainers.image.title="KAIROS ML Service"
+LABEL org.opencontainers.image.description="Machine Learning Service for KAIROS"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="KAIROS Team"
 
 # Startbefehl
 CMD ["python", "app.py"]

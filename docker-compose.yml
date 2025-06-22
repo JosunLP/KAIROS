@@ -1,44 +1,50 @@
 version: '3.8'
 
+# Base configuration for KAIROS - unified for all environments
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.${ENV}.yml up
+
 services:
-  # PostgreSQL Datenbank Container
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: kairos-postgres
     environment:
-      - POSTGRES_DB=kairos
-      - POSTGRES_USER=kairos
-      - POSTGRES_PASSWORD=kairos_password
+      - POSTGRES_DB=${POSTGRES_DB:-kairos}
+      - POSTGRES_USER=${POSTGRES_USER:-kairos}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kairos_password}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - '5433:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     networks:
       - kairos_network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U kairos -d kairos']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-kairos} -d ${POSTGRES_DB:-kairos}']
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ML Models Service Container
+  # ML Service
   ml-service:
     build:
       context: .
       dockerfile: Dockerfile.ml
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.11}
     container_name: kairos-ml-service
     environment:
-      - ML_SERVICE_PORT=8080
+      - ML_SERVICE_PORT=${ML_SERVICE_PORT:-8080}
       - MODEL_STORAGE_PATH=/app/models
       - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${ML_LOG_LEVEL:-info}
     volumes:
       - ml_models:/app/models
       - ml_logs:/app/logs
     ports:
-      - '8081:8080'
+      - '${ML_SERVICE_PORT:-8080}:8080'
     networks:
       - kairos_network
     restart: unless-stopped
@@ -48,109 +54,91 @@ services:
       timeout: 10s
       retries: 3
 
-  # Initialisierungs-Service
-  kairos-init:
+  # Redis Cache (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: kairos-redis
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - kairos_network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - cache
+
+  # Database Initialization Service
+  db-init:
     build:
       context: .
       dockerfile: Dockerfile
-      target: build
+      target: init
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://kairos:kairos_password@postgres:5432/kairos
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-kairos}:${POSTGRES_PASSWORD:-kairos_password}@postgres:5432/${POSTGRES_DB:-kairos}
+      - DEBUG=prisma:*
     volumes:
       - ./prisma:/app/prisma
+    networks:
+      - kairos_network
     entrypoint: []
     command: >
       sh -c "
-        echo '🔄 Initialisiere Datenbank...' &&
+        echo '🚀 Initializing database...' &&
         npx prisma db push &&
-        npx prisma generate &&
-        echo '✅ Datenbank initialisiert!'
+        echo '✅ Database initialized successfully!'
       "
     restart: 'no'
+    profiles:
+      - init
 
-  # Hauptanwendung (Produktion)
+  # Main Application
   kairos:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production
+      target: ${BUILD_TARGET:-production}
+      args:
+        - NODE_VERSION=${NODE_VERSION:-18}
     container_name: kairos-app
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://kairos:kairos_password@postgres:5432/kairos
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-kairos}:${POSTGRES_PASSWORD:-kairos_password}@postgres:5432/${POSTGRES_DB:-kairos}
       - ML_SERVICE_URL=http://ml-service:8080
-      - LOG_LEVEL=info
-      - ENABLE_FILE_LOGGING=true
+      - REDIS_URL=redis://${REDIS_PASSWORD:+:${REDIS_PASSWORD}@}redis:6379
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENABLE_FILE_LOGGING=${ENABLE_FILE_LOGGING:-true}
       - LOG_FILE_PATH=/app/logs/kairos.log
-      # Cron Job Konfiguration für Produktion
-      - SCHEDULING_TIMEZONE=Europe/Berlin
-      - ENABLE_CRON_MONITORING=true
-      - CRON_JOB_TIMEOUT=900000
-      - ENABLE_CRON_NOTIFICATIONS=true
-      - CRON_FAILURE_THRESHOLD=2
-      # Produktions-optimierte Cron Zeitpläne
-      - DATA_INGESTION_CRON=*/30 9-17 * * 1-5
-      - TECHNICAL_ANALYSIS_CRON=5 * * * *
-      - ML_TRAINING_CRON=0 2 * * 1-5
-      - PREDICTION_VALIDATION_CRON=0 4 * * 1-5
-      - DATA_CLEANUP_CRON=0 3 * * 6
-      - DAILY_PREDICTION_CRON=30 6 * * 1-5
-      - DATA_INTEGRITY_CRON=0 1 * * *
+      - SCHEDULING_TIMEZONE=${SCHEDULING_TIMEZONE:-Europe/Berlin}
+      - ENABLE_CRON_MONITORING=${ENABLE_CRON_MONITORING:-true}
+      - CRON_JOB_TIMEOUT=${CRON_JOB_TIMEOUT:-900000}
+      - ENABLE_CRON_NOTIFICATIONS=${ENABLE_CRON_NOTIFICATIONS:-true}
+      - CRON_FAILURE_THRESHOLD=${CRON_FAILURE_THRESHOLD:-2}
+      - DATA_INGESTION_CRON=${DATA_INGESTION_CRON:-*/30 9-17 * * 1-5}
+      - TECHNICAL_ANALYSIS_CRON=${TECHNICAL_ANALYSIS_CRON:-5 * * * *}
+      - ML_TRAINING_CRON=${ML_TRAINING_CRON:-0 2 * * 1-5}
+      - PREDICTION_VALIDATION_CRON=${PREDICTION_VALIDATION_CRON:-0 4 * * 1-5}
+      - DATA_CLEANUP_CRON=${DATA_CLEANUP_CRON:-0 3 * * 6}
+      - DAILY_PREDICTION_CRON=${DAILY_PREDICTION_CRON:-30 6 * * 1-5}
+      - DATA_INTEGRITY_CRON=${DATA_INTEGRITY_CRON:-0 1 * * *}
     env_file:
       - .env
     volumes:
-      # Log-Dateien
       - ./logs:/app/logs
       - ./models:/app/models
-    networks:
-      - kairos_network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kairos-init:
-        condition: service_completed_successfully
-    restart: unless-stopped
-    # Für CLI-Anwendung: interaktiver Modus
-    stdin_open: true
-    tty: true
-
-  # Entwicklungsversion mit Hot-Reload
-  kairos-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: build
-    container_name: kairos-dev
-    environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://kairos:kairos_password@postgres:5432/kairos
-      - ML_SERVICE_URL=http://ml-service:8080
-      - LOG_LEVEL=debug
-      # Entwicklungs-Cron Konfiguration (häufigere Ausführung)
-      - SCHEDULING_TIMEZONE=Europe/Berlin
-      - ENABLE_CRON_MONITORING=true
-      - CRON_JOB_TIMEOUT=300000
-      - ENABLE_CRON_NOTIFICATIONS=false
-      - DATA_INGESTION_CRON=*/15 * * * *
-      - TECHNICAL_ANALYSIS_CRON=0 * * * *
-      - ML_TRAINING_CRON=0 2 * * *
-      - PREDICTION_VALIDATION_CRON=0 3 * * *
-      - DATA_CLEANUP_CRON=0 4 * * 0
-      - DAILY_PREDICTION_CRON=0 6 * * *
-      - DATA_INTEGRITY_CRON=0 1 * * *
-    env_file:
-      - .env
-    volumes:
-      # Source-Code für Hot-Reload
-      - ./src:/app/src
-      - ./prisma:/app/prisma
-      - ./package.json:/app/package.json
-      - ./package-lock.json:/app/package-lock.json
-      # Log-Dateien
-      - app_logs_dev:/app/logs
+      - ./data:/app/data
+    ports:
+      - '${APP_PORT:-3000}:3000'
     networks:
       - kairos_network
     depends_on:
@@ -158,13 +146,16 @@ services:
         condition: service_healthy
       ml-service:
         condition: service_healthy
-    command: npm run start:dev
+    restart: unless-stopped
     stdin_open: true
     tty: true
-    profiles:
-      - dev
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'process.exit(0)']
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Prisma Studio für Datenbankvisualisierung
+  # Prisma Studio (Development Tool)
   prisma-studio:
     build:
       context: .
@@ -172,13 +163,13 @@ services:
       target: build
     container_name: kairos-prisma-studio
     environment:
-      - DATABASE_URL=postgresql://kairos:kairos_password@postgres:5432/kairos
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-kairos}:${POSTGRES_PASSWORD:-kairos_password}@postgres:5432/${POSTGRES_DB:-kairos}
     env_file:
       - .env
     volumes:
       - ./prisma:/app/prisma
     ports:
-      - '5555:5555'
+      - '${PRISMA_STUDIO_PORT:-5555}:5555'
     networks:
       - kairos_network
     depends_on:
@@ -188,38 +179,13 @@ services:
     profiles:
       - dev
 
-  # Redis für Caching (optional)
-  redis:
-    image: redis:7-alpine
-    container_name: kairos-redis
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
-    networks:
-      - kairos_network
-    restart: unless-stopped
-    profiles:
-      - cache
-
 volumes:
-  # Datenbank-Volume
   postgres_data:
     driver: local
-
-  # ML-Models Volume
   ml_models:
-    driver: local
-
-  # Log-Volumes
-  app_logs:
-    driver: local
-  app_logs_dev:
     driver: local
   ml_logs:
     driver: local
-
-  # Redis-Volume
   redis_data:
     driver: local
 

@@ -1,0 +1,85 @@
+# Production Environment Configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+services:
+  # Override PostgreSQL for production
+  postgres:
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-kairos}
+      - POSTGRES_USER=${POSTGRES_USER:-kairos}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  # Override ML Service for production
+  ml-service:
+    environment:
+      - ML_SERVICE_PORT=8080
+      - LOG_LEVEL=warn
+    ports:
+      - '8080:8080'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+  # Override main application for production
+  kairos:
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-kairos}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-kairos}
+      - ML_SERVICE_URL=http://ml-service:8080
+      - LOG_LEVEL=warn
+      - ENABLE_FILE_LOGGING=true
+      - ENABLE_CRON_MONITORING=true
+      - CRON_JOB_TIMEOUT=900000
+      - ENABLE_CRON_NOTIFICATIONS=true
+      - CRON_FAILURE_THRESHOLD=3
+      # Production cron schedules (optimized)
+      - DATA_INGESTION_CRON=*/30 9-17 * * 1-5
+      - TECHNICAL_ANALYSIS_CRON=5 * * * *
+      - ML_TRAINING_CRON=0 2 * * 1-5
+      - PREDICTION_VALIDATION_CRON=0 4 * * 1-5
+      - DATA_CLEANUP_CRON=0 3 * * 6
+      - DAILY_PREDICTION_CRON=30 6 * * 1-5
+      - DATA_INTEGRITY_CRON=0 1 * * *
+    ports:
+      - '3000:3000'
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    restart: always
+
+  # Enable Redis for production
+  redis:
+    profiles: []
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+volumes:
+  postgres_prod_data:
+    driver: local

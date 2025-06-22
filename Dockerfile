@@ -1,33 +1,95 @@
-# KAIROS Dockerfile
-FROM node:18-alpine AS build
+# KAIROS Unified Dockerfile
+# Supports development, staging, and production environments
+
+# Build arguments
+ARG NODE_VERSION=18
+ARG PYTHON_VERSION=3.11
+
+# Base stage for shared dependencies
+FROM node:${NODE_VERSION}-alpine AS base
 
 # Install system dependencies
-RUN apk add --no-cache python3 make g++ bash curl
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    bash \
+    curl \
+    openssl \
+    git
 
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci
 
-# Copy source and build
+# Install dependencies
+RUN npm ci && npm cache clean --force
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build stage
+FROM base AS build
+
+# Copy source code
 COPY . .
-RUN npm run build && npx prisma generate
 
-# Production stage  
-FROM node:18-alpine AS production
+# Build the application
+RUN npm run build
 
-RUN apk add --no-cache bash curl
+# Development stage
+FROM base AS development
+
+# Copy source code for hot reload
+COPY . .
+
+# Create user and directories
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S kairos -u 1001 -G nodejs && \
+    mkdir -p /app/logs /app/models /app/data /app/scripts && \
+    chown -R kairos:nodejs /app
+
+# Switch to non-root user
+USER kairos
+
+# Expose port
+EXPOSE 3000
+
+# Development command
+CMD ["npm", "run", "start:dev"]
+
+# Init stage for database operations
+FROM base AS init
+
+# Create user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S kairos -u 1001 -G nodejs && \
+    mkdir -p /app/logs /app/models /app/data /app/scripts && \
+    chown -R kairos:nodejs /app
+
+USER kairos
+
+# Production stage
+FROM node:${NODE_VERSION}-alpine AS production
+
+# Install production dependencies only
+RUN apk add --no-cache bash curl openssl
 
 WORKDIR /app
 
-# Copy package files and install production dependencies
+# Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --only=production
 
-# Copy built application
+# Install production dependencies only
+RUN npm ci --only=production && npm cache clean --force
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy built application from build stage
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
@@ -36,34 +98,6 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S kairos -u 1001 -G nodejs && \
     mkdir -p /app/logs /app/models /app/data /app/scripts && \
     chown -R kairos:nodejs /app
-
-# Create init script directly in Dockerfile
-RUN cat > /app/scripts/docker-init.sh << 'EOF'
-#!/bin/bash
-echo "🚀 KAIROS Docker Initialisierung..."
-
-# Warten auf Datenbank
-echo "⏳ Warte auf PostgreSQL..."
-until npx prisma db ping > /dev/null 2>&1; do
-  echo "  - Datenbank noch nicht bereit, warte 2 Sekunden..."
-  sleep 2
-done
-
-echo "✅ Datenbank ist bereit!"
-
-# Prisma-Schema anwenden
-echo "🔄 Wende Prisma-Schema an..."
-npx prisma db push
-
-echo "✅ Initialisierung abgeschlossen!"
-
-# Anwendung starten
-echo "🚀 Starte KAIROS..."
-exec "$@"
-EOF
-
-# Make script executable
-RUN chmod +x /app/scripts/docker-init.sh
 
 # Switch to non-root user
 USER kairos
@@ -81,6 +115,5 @@ LABEL org.opencontainers.image.description="KI-gestützte Aktienanalyse-CLI"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.vendor="KAIROS Team"
 
-# Use init script as entrypoint
-ENTRYPOINT ["/app/scripts/docker-init.sh"]
+# Production command
 CMD ["npm", "run", "start:prod"]
