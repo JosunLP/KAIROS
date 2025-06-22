@@ -57,7 +57,7 @@ export interface AlertNotification {
 @Injectable()
 export class WebSocketService {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private readonly logger = new Logger(WebSocketService.name);
   private readonly connectedClients = new Map<string, Socket>();
