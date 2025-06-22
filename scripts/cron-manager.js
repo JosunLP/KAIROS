@@ -2,9 +2,9 @@
 
 /**
  * KAIROS Cron Job Management Script
- * 
+ *
  * Dieses Script hilft beim Verwalten und Überwachen der Cron Jobs im KAIROS System.
- * 
+ *
  * Verwendung:
  *   node cron-manager.js status           - Zeigt Status aller Cron Jobs
  *   node cron-manager.js logs [jobName]   - Zeigt Logs für alle oder einen spezifischen Job
@@ -23,7 +23,8 @@ const CRON_JOBS = {
     name: 'Datenerfassung',
     cron: '*/15 * * * *',
     env: 'DATA_INGESTION_CRON',
-    description: 'Holt aktuelle Marktdaten alle 15 Minuten während Handelszeiten',
+    description:
+      'Holt aktuelle Marktdaten alle 15 Minuten während Handelszeiten',
     timeout: 300000, // 5 Minuten
   },
   'technical-analysis': {
@@ -74,7 +75,7 @@ function parseCommand() {
   const args = process.argv.slice(2);
   const command = args[0];
   const jobName = args[1];
-  
+
   return { command, jobName };
 }
 
@@ -84,7 +85,7 @@ function validateCronExpression(cronExpression) {
   if (parts.length !== 5) {
     return false;
   }
-  
+
   // Weitere Validierung könnte hier hinzugefügt werden
   return true;
 }
@@ -94,51 +95,70 @@ function getNextScheduledTime(cronExpression) {
   // In einer echten Implementierung würde man eine Cron-Parsing-Bibliothek verwenden
   const now = new Date();
   const next = new Date(now.getTime() + 60000); // Nächste Minute als Platzhalter
-  
-  return next.toLocaleString('de-DE', { 
+
+  return next.toLocaleString('de-DE', {
     timeZone: 'Europe/Berlin',
     weekday: 'long',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   });
 }
 
 function showStatus() {
   console.log('🔄 KAIROS Cron Job Status');
-  console.log('=' .repeat(80));
-  
+  console.log('='.repeat(80));
+
   Object.entries(CRON_JOBS).forEach(([key, job]) => {
     const envValue = process.env[job.env] || job.cron;
     const isValid = validateCronExpression(envValue);
     const status = isValid ? '✅ Aktiv' : '❌ Ungültig';
-    
+
     console.log(`\n📋 ${job.name} (${key})`);
     console.log(`   Beschreibung: ${job.description}`);
     console.log(`   Cron:         ${envValue}`);
     console.log(`   Status:       ${status}`);
     console.log(`   Timeout:      ${job.timeout / 1000}s`);
-    
+
     if (isValid) {
       console.log(`   Nächste Ausführung: ${getNextScheduledTime(envValue)}`);
+    }
+  });
+
+  // Zeige auch wichtige Umgebungsvariablen
+  console.log('\n⚙️  Wichtige Umgebungsvariablen:');
+  const importantVars = [
+    'NODE_ENV',
+    'SCHEDULING_ENABLED',
+    'SCHEDULING_TIMEZONE',
+    'ENABLE_CRON_MONITORING',
+    'CRON_JOB_TIMEOUT',
+  ];
+
+  importantVars.forEach(varName => {
+    const value = process.env[varName];
+    if (value) {
+      console.log(`   ${varName}: ${value}`);
+    } else {
+      console.log(`   ${varName}: ❌ Nicht gesetzt`);
     }
   });
 }
 
 function showLogs(jobName) {
   const logFile = path.join(__dirname, '../../logs/kairos.log');
-  
+
   if (!fs.existsSync(logFile)) {
     console.log('❌ Keine Log-Datei gefunden.');
     return;
   }
-  
+
   try {
     const logs = fs.readFileSync(logFile, 'utf8');
     const lines = logs.split('\n');
-    
+
     let filteredLines;
     if (jobName) {
       const jobConfig = CRON_JOBS[jobName];
@@ -146,30 +166,31 @@ function showLogs(jobName) {
         console.log(`❌ Unbekannter Job: ${jobName}`);
         return;
       }
-      
+
       console.log(`📄 Logs für Job: ${jobConfig.name}`);
-      filteredLines = lines.filter(line => 
-        line.includes(jobConfig.name) || 
-        line.includes(jobName) ||
-        line.includes('cron') ||
-        line.includes('scheduled')
+      filteredLines = lines.filter(
+        line =>
+          line.includes(jobConfig.name) ||
+          line.includes(jobName) ||
+          line.includes('cron') ||
+          line.includes('scheduled'),
       );
     } else {
       console.log('📄 Alle Cron Job Logs:');
-      filteredLines = lines.filter(line => 
-        line.includes('cron') || 
-        line.includes('scheduled') ||
-        line.includes('geplant')
+      filteredLines = lines.filter(
+        line =>
+          line.includes('cron') ||
+          line.includes('scheduled') ||
+          line.includes('geplant'),
       );
     }
-    
-    console.log('=' .repeat(80));
+
+    console.log('='.repeat(80));
     filteredLines.slice(-50).forEach(line => {
       if (line.trim()) {
         console.log(line);
       }
     });
-    
   } catch (error) {
     console.error('❌ Fehler beim Lesen der Log-Datei:', error.message);
   }
@@ -177,14 +198,14 @@ function showLogs(jobName) {
 
 function testConfiguration() {
   console.log('🧪 Teste Cron Job Konfiguration...');
-  console.log('=' .repeat(80));
-  
+  console.log('='.repeat(80));
+
   let allValid = true;
-  
+
   Object.entries(CRON_JOBS).forEach(([key, job]) => {
     const envValue = process.env[job.env] || job.cron;
     const isValid = validateCronExpression(envValue);
-    
+
     if (isValid) {
       console.log(`✅ ${job.name}: ${envValue}`);
     } else {
@@ -192,25 +213,25 @@ function testConfiguration() {
       allValid = false;
     }
   });
-  
-  console.log('\n' + '=' .repeat(80));
-  
+
+  console.log('\n' + '='.repeat(80));
+
   if (allValid) {
     console.log('✅ Alle Cron Job Konfigurationen sind gültig!');
   } else {
     console.log('❌ Einige Cron Job Konfigurationen sind ungültig!');
     process.exit(1);
   }
-  
+
   // Teste auch Umgebungsvariablen
   console.log('\n🔧 Umgebungsvariablen:');
   const requiredEnvVars = [
     'SCHEDULING_TIMEZONE',
     'ENABLE_CRON_MONITORING',
     'CRON_JOB_TIMEOUT',
-    'CRON_FAILURE_THRESHOLD'
+    'CRON_FAILURE_THRESHOLD',
   ];
-  
+
   requiredEnvVars.forEach(envVar => {
     const value = process.env[envVar];
     if (value) {
@@ -223,12 +244,12 @@ function testConfiguration() {
 
 function validateAll() {
   console.log('✅ Validiere alle Cron Expressions...');
-  console.log('=' .repeat(80));
-  
+  console.log('='.repeat(80));
+
   Object.entries(CRON_JOBS).forEach(([key, job]) => {
     const envValue = process.env[job.env] || job.cron;
     const isValid = validateCronExpression(envValue);
-    
+
     if (isValid) {
       console.log(`✅ ${key}: ${envValue}`);
     } else {
@@ -239,11 +260,11 @@ function validateAll() {
 
 function showSchedule() {
   console.log('📅 Geplante Cron Job Ausführungen');
-  console.log('=' .repeat(80));
-  
+  console.log('='.repeat(80));
+
   Object.entries(CRON_JOBS).forEach(([key, job]) => {
     const envValue = process.env[job.env] || job.cron;
-    
+
     console.log(`\n⏰ ${job.name}`);
     console.log(`   Cron: ${envValue}`);
     console.log(`   Nächste Ausführung: ${getNextScheduledTime(envValue)}`);
@@ -252,20 +273,24 @@ function showSchedule() {
 
 function showHelp() {
   console.log('🔧 KAIROS Cron Job Manager');
-  console.log('=' .repeat(80));
+  console.log('='.repeat(80));
   console.log('\nVerfügbare Kommandos:');
   console.log('  status                    - Zeigt Status aller Cron Jobs');
-  console.log('  logs [jobName]           - Zeigt Logs für alle oder einen spezifischen Job');
+  console.log(
+    '  logs [jobName]           - Zeigt Logs für alle oder einen spezifischen Job',
+  );
   console.log('  test                     - Testet die Cron Job Konfiguration');
   console.log('  validate                 - Validiert alle Cron Expressions');
-  console.log('  schedule                 - Zeigt nächste geplante Ausführungen');
+  console.log(
+    '  schedule                 - Zeigt nächste geplante Ausführungen',
+  );
   console.log('  help                     - Zeigt diese Hilfe');
-  
+
   console.log('\nVerfügbare Jobs:');
   Object.entries(CRON_JOBS).forEach(([key, job]) => {
     console.log(`  ${key.padEnd(20)} - ${job.name}`);
   });
-  
+
   console.log('\nBeispiele:');
   console.log('  node cron-manager.js status');
   console.log('  node cron-manager.js logs ml-training');
@@ -275,7 +300,7 @@ function showHelp() {
 // Hauptfunktion
 function main() {
   const { command, jobName } = parseCommand();
-  
+
   switch (command) {
     case 'status':
       showStatus();
@@ -312,5 +337,5 @@ if (require.main === module) {
 module.exports = {
   CRON_JOBS,
   validateCronExpression,
-  getNextScheduledTime
+  getNextScheduledTime,
 };
