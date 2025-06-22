@@ -19,10 +19,10 @@ services:
     env_file:
       - .env
     environment:
-      - ML_SERVICE_PORT=${ML_SERVICE_PORT:-8081}
+      - ML_SERVICE_PORT=${ML_SERVICE_PORT:-8082}
       - LOG_LEVEL=${LOG_LEVEL:-debug}
     ports:
-      - '8081:8081'
+      - '8082:8080'
     volumes:
       - ./ml-service:/app
       - ml_models_dev:/app/models

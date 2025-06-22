@@ -14,7 +14,7 @@ INSERT INTO
   )
 VALUES
   (
-    'clm1',
+    'clh01h3b8000001lu08cozwp9m',
     'AAPL',
     'Apple Inc.',
     'Technology',
@@ -24,7 +24,7 @@ VALUES
     true
   ),
   (
-    'clm2',
+    'clh01h3b8000002lu08cozwp9m',
     'MSFT',
     'Microsoft Corporation',
     'Technology',
@@ -34,7 +34,7 @@ VALUES
     true
   ),
   (
-    'clm3',
+    'clh01h3b8000003lu08cozwp9m',
     'GOOGL',
     'Alphabet Inc.',
     'Technology',
@@ -44,7 +44,7 @@ VALUES
     true
   ),
   (
-    'clm4',
+    'clh01h3b8000004lu08cozwp9m',
     'AMZN',
     'Amazon.com Inc.',
     'Consumer Cyclical',
@@ -54,7 +54,7 @@ VALUES
     true
   ),
   (
-    'clm5',
+    'clh01h3b8000005lu08cozwp9m',
     'TSLA',
     'Tesla Inc.',
     'Consumer Cyclical',
@@ -64,7 +64,7 @@ VALUES
     true
   ),
   (
-    'clm6',
+    'clh01h3b8000006lu08cozwp9m',
     'NVDA',
     'NVIDIA Corporation',
     'Technology',
@@ -74,7 +74,7 @@ VALUES
     true
   ),
   (
-    'clm7',
+    'clh01h3b8000007lu08cozwp9m',
     'META',
     'Meta Platforms Inc.',
     'Technology',
@@ -84,7 +84,7 @@ VALUES
     true
   ),
   (
-    'clm8',
+    'clh01h3b8000008lu08cozwp9m',
     'BRK.A',
     'Berkshire Hathaway Inc.',
     'Financial Services',
@@ -94,7 +94,7 @@ VALUES
     true
   ),
   (
-    'clm9',
+    'clh01h3b8000009lu08cozwp9m',
     'JNJ',
     'Johnson & Johnson',
     'Healthcare',
@@ -104,7 +104,7 @@ VALUES
     true
   ),
   (
-    'clm10',
+    'clh01h3b8000010lu08cozwp9m',
     'V',
     'Visa Inc.',
     'Financial Services',
@@ -131,7 +131,7 @@ INSERT INTO
   )
 VALUES
   (
-    'p1',
+    'clh01h3b8000011lu08cozwp9m',
     'Sample Portfolio',
     'A sample portfolio for testing purposes',
     100000.00,
@@ -162,9 +162,9 @@ INSERT INTO
   )
 VALUES
   (
-    'pp1',
-    'p1',
-    'clm1',
+    'clh01h3b8000012lu08cozwp9m',
+    'clh01h3b8000011lu08cozwp9m',
+    'clh01h3b8000001lu08cozwp9m',
     'AAPL',
     10,
     150.00,
@@ -176,9 +176,9 @@ VALUES
     NOW ()
   ),
   (
-    'pp2',
-    'p1',
-    'clm2',
+    'clh01h3b8000013lu08cozwp9m',
+    'clh01h3b8000011lu08cozwp9m',
+    'clh01h3b8000002lu08cozwp9m',
     'MSFT',
     8,
     300.00,
@@ -190,9 +190,9 @@ VALUES
     NOW ()
   ),
   (
-    'pp3',
-    'p1',
-    'clm6',
+    'clh01h3b8000014lu08cozwp9m',
+    'clh01h3b8000011lu08cozwp9m',
+    'clh01h3b8000006lu08cozwp9m',
     'NVDA',
     5,
     400.00,
@@ -223,7 +223,7 @@ VALUES
     144.00,
     146.50,
     50000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '29 days',
@@ -232,7 +232,7 @@ VALUES
     145.50,
     147.80,
     48000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '28 days',
@@ -241,7 +241,7 @@ VALUES
     147.00,
     148.90,
     52000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '27 days',
@@ -250,7 +250,7 @@ VALUES
     148.50,
     149.20,
     49000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '26 days',
@@ -259,7 +259,7 @@ VALUES
     148.80,
     150.50,
     51000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '25 days',
@@ -268,7 +268,7 @@ VALUES
     149.50,
     151.20,
     53000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '24 days',
@@ -277,7 +277,7 @@ VALUES
     150.80,
     152.40,
     47000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '23 days',
@@ -286,7 +286,7 @@ VALUES
     151.50,
     153.10,
     54000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '22 days',
@@ -295,7 +295,7 @@ VALUES
     152.80,
     154.30,
     50000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '21 days',
@@ -304,7 +304,7 @@ VALUES
     153.50,
     155.20,
     52000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '20 days',
@@ -313,7 +313,7 @@ VALUES
     154.80,
     156.40,
     48000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '19 days',
@@ -322,7 +322,7 @@ VALUES
     155.50,
     157.10,
     51000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '18 days',
@@ -331,7 +331,7 @@ VALUES
     156.80,
     158.30,
     53000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '17 days',
@@ -340,7 +340,7 @@ VALUES
     157.50,
     159.20,
     49000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '16 days',
@@ -349,7 +349,7 @@ VALUES
     158.80,
     160.40,
     52000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '15 days',
@@ -358,7 +358,7 @@ VALUES
     159.50,
     161.10,
     54000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '14 days',
@@ -367,7 +367,7 @@ VALUES
     160.80,
     162.30,
     50000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '13 days',
@@ -376,7 +376,7 @@ VALUES
     161.50,
     163.20,
     48000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '12 days',
@@ -385,7 +385,7 @@ VALUES
     162.80,
     164.40,
     51000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '11 days',
@@ -394,7 +394,7 @@ VALUES
     163.50,
     165.10,
     53000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '10 days',
@@ -403,7 +403,7 @@ VALUES
     164.80,
     166.30,
     49000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '9 days',
@@ -412,7 +412,7 @@ VALUES
     165.50,
     167.20,
     52000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '8 days',
@@ -421,7 +421,7 @@ VALUES
     166.80,
     168.40,
     54000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '7 days',
@@ -430,7 +430,7 @@ VALUES
     167.50,
     169.10,
     50000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '6 days',
@@ -439,7 +439,7 @@ VALUES
     168.80,
     170.30,
     48000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '5 days',
@@ -448,7 +448,7 @@ VALUES
     169.50,
     171.20,
     51000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '4 days',
@@ -457,7 +457,7 @@ VALUES
     170.80,
     172.40,
     53000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '3 days',
@@ -466,7 +466,7 @@ VALUES
     171.50,
     173.10,
     49000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '2 days',
@@ -475,7 +475,7 @@ VALUES
     172.80,
     174.30,
     52000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW () - INTERVAL '1 day',
@@ -484,7 +484,7 @@ VALUES
     173.50,
     175.20,
     54000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ),
   (
     NOW (),
@@ -493,7 +493,7 @@ VALUES
     174.80,
     176.40,
     50000000,
-    'clm1'
+    'clh01h3b8000001lu08cozwp9m'
   ) ON CONFLICT ("stockId", timestamp) DO NOTHING;
 
 -- Update portfolio values based on current stock prices
@@ -505,10 +505,10 @@ SET
     FROM
       portfolio_positions
     WHERE
-      "portfolioId" = 'p1'
+      "portfolioId" = 'clh01h3b8000011lu08cozwp9m'
   ) + cash
 WHERE
-  id = 'p1';
+  id = 'clh01h3b8000011lu08cozwp9m';
 
 -- Update portfolio positions with current prices
 UPDATE portfolio_positions
@@ -548,11 +548,11 @@ SET
       FROM
         portfolios
       WHERE
-        id = 'p1'
+        id = 'clh01h3b8000011lu08cozwp9m'
     )
   ) * 100
 WHERE
-  "portfolioId" = 'p1';
+  "portfolioId" = 'clh01h3b8000011lu08cozwp9m';
 
 COMMENT ON TABLE stocks IS 'Sample stock data seeded for testing';
 
