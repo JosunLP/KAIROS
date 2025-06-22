@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
-import { SimpleCliService } from './cli/simple-cli.service';
+import { NestFactory } from '@nestjs/core';
 import * as readline from 'readline';
+import { AppModule } from './app.module';
+import { SimpleCliService } from './cli/simple-cli.service';
+import { WebSocketService } from './common/websocket.service';
+import { HealthService } from './health/health.service';
 
 async function main() {
   try {
@@ -13,9 +15,32 @@ async function main() {
     });
 
     const logger = new Logger('KAIROS');
+    const healthService = app.get(HealthService);
+
+    // Initial Health Check
+    logger.log('🔍 Führe initialen Health Check durch...');
+    const healthStatus = await healthService.performHealthCheck();
+    if (healthStatus.status === 'unhealthy') {
+      logger.error(
+        '❌ System ist nicht gesund - kritische Komponenten fehlgeschlagen',
+      );
+      logger.error('Health Check Details:', healthStatus);
+      process.exit(1);
+    }
+    logger.log('✅ System ist gesund und bereit');
 
     // CLI-Service abrufen
     const cliService = app.get(SimpleCliService);
+
+    // WebSocket Service initialisieren (falls verfügbar)
+    try {
+      app.get(WebSocketService);
+      logger.log('🔌 WebSocket Service initialisiert');
+    } catch (error) {
+      logger.warn(
+        '⚠️ WebSocket Service nicht verfügbar - Real-time Features deaktiviert',
+      );
+    }
 
     // Prüfe ob Kommandozeilenargumente übergeben wurden (Legacy-Modus)
     if (process.argv.length > 2) {
@@ -58,6 +83,31 @@ async function main() {
       } else if (command === '') {
         // Leere Eingabe - nur neuen Prompt anzeigen
         rl.prompt();
+      } else if (command === 'health') {
+        // Health Check über CLI
+        try {
+          const health = await healthService.performHealthCheck();
+          console.log('🏥 System Health Status:');
+          console.log(`Status: ${health.status}`);
+          console.log(`Duration: ${health.duration}ms`);
+          console.log('Component Status:');
+          Object.entries(health.checks).forEach(([component, check]) => {
+            if (check) {
+              console.log(`  ${component}: ${check.status} - ${check.message}`);
+            }
+          });
+        } catch (error) {
+          console.error('❌ Health Check fehlgeschlagen:', error);
+        }
+        rl.prompt();
+      } else if (command === 'status') {
+        // System Status über CLI
+        try {
+          await cliService.processCommand(['node', 'kairos', 'status']);
+        } catch (error) {
+          console.error('❌ Status Check fehlgeschlagen:', error);
+        }
+        rl.prompt();
       } else {
         // Befehl verarbeiten
         const args = ['node', 'kairos', ...command.split(' ')];
@@ -78,6 +128,28 @@ async function main() {
       await cliService.stopPersistentMode();
       await app.close();
       process.exit(0);
+    });
+
+    // Graceful shutdown bei anderen Signalen
+    process.on('SIGTERM', async () => {
+      logger.log('SIGTERM empfangen - Graceful Shutdown...');
+      await cliService.stopPersistentMode();
+      await app.close();
+      process.exit(0);
+    });
+
+    process.on('uncaughtException', async error => {
+      logger.error('Uncaught Exception:', error);
+      await cliService.stopPersistentMode();
+      await app.close();
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', async (reason, promise) => {
+      logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      await cliService.stopPersistentMode();
+      await app.close();
+      process.exit(1);
     });
   } catch (error) {
     console.error('❌ Fehler beim Starten der Anwendung:', error);
