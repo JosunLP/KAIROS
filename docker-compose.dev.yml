@@ -5,9 +5,9 @@ services:
   # Override PostgreSQL for development
   postgres:
     environment:
-      - POSTGRES_DB=kairos_dev
-      - POSTGRES_USER=kairos_dev
-      - POSTGRES_PASSWORD=kairos_dev_password
+      - POSTGRES_DB=${POSTGRES_DB:-kairos_dev}
+      - POSTGRES_USER=${POSTGRES_USER:-kairos_dev}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kairos_dev_password}
     ports:
       - '5433:5432'
     volumes:
@@ -16,9 +16,11 @@ services:
 
   # Override ML Service for development
   ml-service:
+    env_file:
+      - .env
     environment:
-      - ML_SERVICE_PORT=8081
-      - LOG_LEVEL=debug
+      - ML_SERVICE_PORT=${ML_SERVICE_PORT:-8081}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
     ports:
       - '8081:8081'
     volumes:
@@ -30,23 +32,25 @@ services:
   kairos:
     build:
       target: build
+    env_file:
+      - .env
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://kairos_dev:kairos_dev_password@postgres:5432/kairos_dev
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-kairos_dev}:${POSTGRES_PASSWORD:-kairos_dev_password}@postgres:5432/${POSTGRES_DB:-kairos_dev}
       - ML_SERVICE_URL=http://ml-service:8080
-      - LOG_LEVEL=debug
-      - ENABLE_FILE_LOGGING=true
-      - ENABLE_CRON_MONITORING=true
-      - CRON_JOB_TIMEOUT=300000
-      - ENABLE_CRON_NOTIFICATIONS=false
-      # Development cron schedules (more frequent)
-      - DATA_INGESTION_CRON=*/15 * * * *
-      - TECHNICAL_ANALYSIS_CRON=0 * * * *
-      - ML_TRAINING_CRON=0 2 * * *
-      - PREDICTION_VALIDATION_CRON=0 3 * * *
-      - DATA_CLEANUP_CRON=0 4 * * 0
-      - DAILY_PREDICTION_CRON=0 6 * * *
-      - DATA_INTEGRITY_CRON=0 1 * * *
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - ENABLE_FILE_LOGGING=${ENABLE_FILE_LOGGING:-true}
+      - ENABLE_CRON_MONITORING=${ENABLE_CRON_MONITORING:-true}
+      - CRON_JOB_TIMEOUT=${CRON_JOB_TIMEOUT:-300000}
+      - ENABLE_CRON_NOTIFICATIONS=${ENABLE_CRON_NOTIFICATIONS:-false}
+      # Development cron schedules (more frequent) - can be overridden in .env
+      - DATA_INGESTION_CRON=${DATA_INGESTION_CRON:-*/15 * * * *}
+      - TECHNICAL_ANALYSIS_CRON=${TECHNICAL_ANALYSIS_CRON:-0 * * * *}
+      - ML_TRAINING_CRON=${ML_TRAINING_CRON:-0 2 * * *}
+      - PREDICTION_VALIDATION_CRON=${PREDICTION_VALIDATION_CRON:-0 3 * * *}
+      - DATA_CLEANUP_CRON=${DATA_CLEANUP_CRON:-0 4 * * 0}
+      - DAILY_PREDICTION_CRON=${DAILY_PREDICTION_CRON:-0 6 * * *}
+      - DATA_INTEGRITY_CRON=${DATA_INTEGRITY_CRON:-0 1 * * *}
     ports:
       - '3000:3000'
     volumes:
@@ -69,10 +73,14 @@ services:
 
   # Enable Prisma Studio for development
   prisma-studio:
+    env_file:
+      - .env
     profiles: []
 
   # Enable Redis for development (optional)
   redis:
+    env_file:
+      - .env
     profiles: []
 
 volumes:

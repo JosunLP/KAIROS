@@ -4,6 +4,8 @@
 services:
   # Override PostgreSQL for production
   postgres:
+    env_file:
+      - .env
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-kairos}
       - POSTGRES_USER=${POSTGRES_USER:-kairos}
@@ -22,9 +24,11 @@ services:
 
   # Override ML Service for production
   ml-service:
+    env_file:
+      - .env
     environment:
-      - ML_SERVICE_PORT=8080
-      - LOG_LEVEL=warn
+      - ML_SERVICE_PORT=${ML_SERVICE_PORT:-8080}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
     ports:
       - '8080:8080'
     deploy:
@@ -38,24 +42,26 @@ services:
 
   # Override main application for production
   kairos:
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-kairos}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-kairos}
       - ML_SERVICE_URL=http://ml-service:8080
-      - LOG_LEVEL=warn
-      - ENABLE_FILE_LOGGING=true
-      - ENABLE_CRON_MONITORING=true
-      - CRON_JOB_TIMEOUT=900000
-      - ENABLE_CRON_NOTIFICATIONS=true
-      - CRON_FAILURE_THRESHOLD=3
-      # Production cron schedules (optimized)
-      - DATA_INGESTION_CRON=*/30 9-17 * * 1-5
-      - TECHNICAL_ANALYSIS_CRON=5 * * * *
-      - ML_TRAINING_CRON=0 2 * * 1-5
-      - PREDICTION_VALIDATION_CRON=0 4 * * 1-5
-      - DATA_CLEANUP_CRON=0 3 * * 6
-      - DAILY_PREDICTION_CRON=30 6 * * 1-5
-      - DATA_INTEGRITY_CRON=0 1 * * *
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+      - ENABLE_FILE_LOGGING=${ENABLE_FILE_LOGGING:-true}
+      - ENABLE_CRON_MONITORING=${ENABLE_CRON_MONITORING:-true}
+      - CRON_JOB_TIMEOUT=${CRON_JOB_TIMEOUT:-900000}
+      - ENABLE_CRON_NOTIFICATIONS=${ENABLE_CRON_NOTIFICATIONS:-true}
+      - CRON_FAILURE_THRESHOLD=${CRON_FAILURE_THRESHOLD:-3}
+      # Production cron schedules (optimized) - can be overridden in .env
+      - DATA_INGESTION_CRON=${DATA_INGESTION_CRON:-*/30 9-17 * * 1-5}
+      - TECHNICAL_ANALYSIS_CRON=${TECHNICAL_ANALYSIS_CRON:-5 * * * *}
+      - ML_TRAINING_CRON=${ML_TRAINING_CRON:-0 2 * * 1-5}
+      - PREDICTION_VALIDATION_CRON=${PREDICTION_VALIDATION_CRON:-0 4 * * 1-5}
+      - DATA_CLEANUP_CRON=${DATA_CLEANUP_CRON:-0 3 * * 6}
+      - DAILY_PREDICTION_CRON=${DAILY_PREDICTION_CRON:-30 6 * * 1-5}
+      - DATA_INTEGRITY_CRON=${DATA_INTEGRITY_CRON:-0 1 * * *}
     ports:
       - '3000:3000'
     deploy:
@@ -70,6 +76,8 @@ services:
 
   # Enable Redis for production
   redis:
+    env_file:
+      - .env
     profiles: []
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}

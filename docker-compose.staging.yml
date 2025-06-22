@@ -4,9 +4,11 @@
 services:
   # Override PostgreSQL for staging
   postgres:
+    env_file:
+      - .env
     environment:
-      - POSTGRES_DB=kairos_staging
-      - POSTGRES_USER=kairos_staging
+      - POSTGRES_DB=${POSTGRES_DB:-kairos_staging}
+      - POSTGRES_USER=${POSTGRES_USER:-kairos_staging}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kairos_staging_password}
     ports:
       - '5434:5432'
@@ -16,36 +18,42 @@ services:
 
   # Override ML Service for staging
   ml-service:
+    env_file:
+      - .env
     environment:
-      - ML_SERVICE_PORT=8082
-      - LOG_LEVEL=info
+      - ML_SERVICE_PORT=${ML_SERVICE_PORT:-8082}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     ports:
       - '8082:8080'
 
   # Override main application for staging
   kairos:
+    env_file:
+      - .env
     environment:
       - NODE_ENV=staging
-      - DATABASE_URL=postgresql://kairos_staging:${POSTGRES_PASSWORD:-kairos_staging_password}@postgres:5432/kairos_staging
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-kairos_staging}:${POSTGRES_PASSWORD:-kairos_staging_password}@postgres:5432/${POSTGRES_DB:-kairos_staging}
       - ML_SERVICE_URL=http://ml-service:8080
-      - LOG_LEVEL=info
-      - ENABLE_FILE_LOGGING=true
-      - ENABLE_CRON_MONITORING=true
-      - CRON_JOB_TIMEOUT=600000
-      - ENABLE_CRON_NOTIFICATIONS=true
-      # Staging cron schedules (balanced)
-      - DATA_INGESTION_CRON=*/20 9-17 * * 1-5
-      - TECHNICAL_ANALYSIS_CRON=2 * * * *
-      - ML_TRAINING_CRON=0 3 * * 1-5
-      - PREDICTION_VALIDATION_CRON=0 5 * * 1-5
-      - DATA_CLEANUP_CRON=0 4 * * 6
-      - DAILY_PREDICTION_CRON=30 7 * * 1-5
-      - DATA_INTEGRITY_CRON=0 2 * * *
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENABLE_FILE_LOGGING=${ENABLE_FILE_LOGGING:-true}
+      - ENABLE_CRON_MONITORING=${ENABLE_CRON_MONITORING:-true}
+      - CRON_JOB_TIMEOUT=${CRON_JOB_TIMEOUT:-600000}
+      - ENABLE_CRON_NOTIFICATIONS=${ENABLE_CRON_NOTIFICATIONS:-true}
+      # Staging cron schedules (balanced) - can be overridden in .env
+      - DATA_INGESTION_CRON=${DATA_INGESTION_CRON:-*/20 9-17 * * 1-5}
+      - TECHNICAL_ANALYSIS_CRON=${TECHNICAL_ANALYSIS_CRON:-2 * * * *}
+      - ML_TRAINING_CRON=${ML_TRAINING_CRON:-0 3 * * 1-5}
+      - PREDICTION_VALIDATION_CRON=${PREDICTION_VALIDATION_CRON:-0 5 * * 1-5}
+      - DATA_CLEANUP_CRON=${DATA_CLEANUP_CRON:-0 4 * * 6}
+      - DAILY_PREDICTION_CRON=${DAILY_PREDICTION_CRON:-30 7 * * 1-5}
+      - DATA_INTEGRITY_CRON=${DATA_INTEGRITY_CRON:-0 2 * * *}
     ports:
       - '3001:3000'
 
   # Enable Redis for staging
   redis:
+    env_file:
+      - .env
     profiles: []
 
 volumes:

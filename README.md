@@ -8,7 +8,8 @@ KAIROS ist eine professionelle Command-Line-Interface (CLI) Anwendung für die K
 - 🤖 **Machine Learning-Prognosen** mit LSTM-Neuronalen Netzen
 - 📈 **Technische Indikatoren** (SMA, EMA, RSI, MACD, Bollinger Bands)
 - ⏰ **Automatisierte Zeitpläne** für Datenerfassung und Training
-- 💾 **SQLite-Datenbank** für lokale Datenspeicherung
+- 💾 **PostgreSQL-Datenbank** für robuste Datenspeicherung
+- 🐳 **Docker-Integration** für einfache Deployment
 - 🎯 **Modulare Architektur** nach Enterprise-Standards
 - 🔄 **Resilienz** mit Retry-Mechanismen und Fehlerbehandlung
 
@@ -16,15 +17,34 @@ KAIROS ist eine professionelle Command-Line-Interface (CLI) Anwendung für die K
 
 - **Runtime**: Node.js mit TypeScript
 - **Framework**: NestJS (Enterprise-ready)
-- **Datenbank**: SQLite mit Prisma ORM
+- **Datenbank**: PostgreSQL mit Prisma ORM
 - **Machine Learning**: TensorFlow.js
 - **CLI**: nestjs-commander
 - **Scheduling**: node-cron
+- **Container**: Docker & Docker Compose
 - **APIs**: Alpha Vantage, Polygon.io, Finnhub
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### Option 1: Docker (Empfohlen)
+
+```bash
+# Repository klonen
+git clone <repository-url>
+cd KAIROS
+
+# Entwicklungsumgebung konfigurieren
+cp env.dev.example .env
+# Bearbeiten Sie .env und tragen Sie Ihre API-Schlüssel ein
+
+# Docker-Container starten
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Status prüfen
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+```
+
+### Option 2: Lokale Installation
 
 ```bash
 # Repository klonen
@@ -33,17 +53,9 @@ cd KAIROS
 
 # Abhängigkeiten installieren und Setup
 npm run setup
-```
 
-### 2. Konfiguration
-
-```bash
-# Einfache Konfiguration mit Setup-Script
-npm run setup-env
-
-# ODER manuell:
 # Umgebungsvariablen konfigurieren
-cp .env.template .env
+cp env.example .env
 # Bearbeiten Sie .env und tragen Sie Ihre API-Schlüssel ein
 ```
 
@@ -54,6 +66,21 @@ cp .env.template .env
 - [Finnhub](https://finnhub.io/) (kostenlos mit Limits)
 
 ### 3. Erste Schritte
+
+#### Mit Docker:
+
+```bash
+# CLI-Hilfe anzeigen
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec kairos npm run kairos -- --help
+
+# Erste Aktie hinzufügen
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec kairos npm run kairos -- track AAPL
+
+# Status prüfen
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec kairos npm run kairos -- status
+```
+
+#### Lokal:
 
 ```bash
 # Projekt kompilieren
@@ -67,13 +94,61 @@ npm run kairos -- track AAPL
 
 # Status prüfen
 npm run kairos -- status
-
-# ML-Modell trainieren
-npm run kairos -- train
-
-# Prognose erstellen
-npm run kairos -- predict AAPL
 ```
+
+## 🐳 Docker Setup
+
+### Entwicklungsumgebung
+
+```bash
+# Entwicklungsumgebung starten
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Logs anzeigen
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+
+# Container stoppen
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+### Staging-Umgebung
+
+```bash
+# Staging-Umgebung starten
+docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+
+# Logs anzeigen
+docker-compose -f docker-compose.yml -f docker-compose.staging.yml logs -f
+```
+
+### Produktionsumgebung
+
+```bash
+# Produktionsumgebung starten
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Logs anzeigen
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
+```
+
+### Umgebungsvariablen
+
+Alle Docker-Container verwenden die lokale `.env` Datei:
+
+```bash
+# Entwicklungsumgebung konfigurieren
+cp env.dev.example .env
+
+# Bearbeiten Sie .env mit Ihren Einstellungen
+nano .env
+```
+
+**Wichtige Umgebungsvariablen:**
+
+- `DATABASE_URL`: PostgreSQL-Verbindungsstring
+- `ALPHA_VANTAGE_API_KEY`: API-Schlüssel für Alpha Vantage
+- `LOG_LEVEL`: Logging-Level (debug, info, warn, error)
+- `NODE_ENV`: Umgebung (development, staging, production)
 
 ## 📚 CLI-Befehle
 
@@ -111,7 +186,7 @@ kairos train --force
 
 ## 🏗️ Architektur
 
-``` structure
+```structure
 KAIROS/
 ├── src/
 │   ├── cli/                 # CLI-Interface
@@ -124,6 +199,8 @@ KAIROS/
 │   └── common/              # Typen & Utils
 ├── prisma/                  # Datenbankschema
 ├── models/                  # ML-Modelle
+├── docker/                  # Docker-Konfiguration
+├── scripts/                 # Setup-Scripts
 └── logs/                    # Log-Dateien
 ```
 
@@ -145,6 +222,22 @@ npm run lint
 npm run prisma:studio
 ```
 
+### Docker-Entwicklung
+
+```bash
+# Entwicklungsumgebung mit Hot-Reload
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Container-Shell öffnen
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec kairos sh
+
+# Datenbank-Shell öffnen
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec postgres psql -U kairos_dev -d kairos_dev
+
+# Prisma Studio starten
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up prisma-studio
+```
+
 ### Datenbankoperationen
 
 ```bash
@@ -156,20 +249,37 @@ npm run prisma:migrate
 
 # Datenbank zurücksetzen
 npm run prisma:reset
+
+# Mit Docker:
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec kairos npx prisma db push
 ```
 
 ## 📊 Monitoring & Logs
 
-### Datenbankstatus prüfen
+### System-Status
 
 ```bash
+# Mit Docker
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec kairos npm run kairos -- status
+
+# Lokal
 kairos status
 ```
 
 ### Log-Dateien
 
-- **Konsole**: Echtzeitausgabe während der Ausführung
-- **Datei**: Optional in `./logs/kairos.log` (konfigurierbar)
+- **Docker**: `docker-compose logs -f kairos`
+- **Lokal**: Optional in `./logs/kairos.log` (konfigurierbar)
+
+### Health Checks
+
+```bash
+# Application Health
+curl http://localhost:3000/health
+
+# ML Service Health
+curl http://localhost:8081/health
+```
 
 ## 🔒 Sicherheit
 
@@ -178,6 +288,7 @@ kairos status
 - ✅ Rate-Limiting für API-Aufrufe
 - ✅ Retry-Mechanismen mit exponentialem Backoff
 - ✅ Eingabevalidierung und Fehlerbehandlung
+- ✅ Sichere Docker-Konfiguration
 
 ## 🎯 Geplante Features
 
@@ -223,15 +334,15 @@ KAIROS führt verschiedene Aufgaben automatisch über Cron Jobs aus. Diese Jobs 
 
 ### 📋 Verfügbare Cron Jobs
 
-| Job | Zeitplan | Beschreibung | Timeout |
-|-----|----------|-------------|---------|
-| **Datenerfassung** | `*/15 * * * *` | Holt aktuelle Marktdaten alle 15 Min (nur Handelszeiten) | 5 Min |
-| **Technische Analyse** | `0 * * * *` | Berechnet technische Indikatoren jede Stunde | 10 Min |
-| **ML-Training** | `0 2 * * *` | Trainiert ML-Modelle täglich um 2:00 Uhr | 1 Std |
-| **Vorhersage-Validierung** | `0 3 * * *` | Validiert Vorhersagen täglich um 3:00 Uhr | 30 Min |
-| **Datenbereinigung** | `0 4 * * 0` | Bereinigt alte Daten sonntags um 4:00 Uhr | 30 Min |
-| **Tägliche Vorhersagen** | `0 6 * * *` | Erstellt tägliche Vorhersagen um 6:00 Uhr | 30 Min |
-| **Datenintegrität** | `0 1 * * *` | Überprüft Datenintegrität täglich um 1:00 Uhr | 10 Min |
+| Job                        | Zeitplan       | Beschreibung                                             | Timeout |
+| -------------------------- | -------------- | -------------------------------------------------------- | ------- |
+| **Datenerfassung**         | `*/15 * * * *` | Holt aktuelle Marktdaten alle 15 Min (nur Handelszeiten) | 5 Min   |
+| **Technische Analyse**     | `0 * * * *`    | Berechnet technische Indikatoren jede Stunde             | 10 Min  |
+| **ML-Training**            | `0 2 * * *`    | Trainiert ML-Modelle täglich um 2:00 Uhr                 | 1 Std   |
+| **Vorhersage-Validierung** | `0 3 * * *`    | Validiert Vorhersagen täglich um 3:00 Uhr                | 30 Min  |
+| **Datenbereinigung**       | `0 4 * * 0`    | Bereinigt alte Daten sonntags um 4:00 Uhr                | 30 Min  |
+| **Tägliche Vorhersagen**   | `0 6 * * *`    | Erstellt tägliche Vorhersagen um 6:00 Uhr                | 30 Min  |
+| **Datenintegrität**        | `0 1 * * *`    | Überprüft Datenintegrität täglich um 1:00 Uhr            | 10 Min  |
 
 ### 🔧 Cron Job Konfiguration
 
@@ -350,7 +461,7 @@ ML_TRAINING_TIMEOUT=7200000  # 2 Stunden
    ```bash
    # Cron Expression validieren
    node scripts/cron-manager.js validate
-   
+
    # NestJS Schedule Module prüfen
    npm run start:dev
    ```
@@ -390,7 +501,7 @@ node scripts/cron-manager.js status
 node scripts/cron-manager.js test
 ```
 
-### � Cron Job Sicherheit
+### 🔐 Cron Job Sicherheit
 
 - **🔐 Umgebungsvariablen** für alle kritischen Konfigurationen
 - **🚨 Fehler-Alerting** bei kritischen Problemen
