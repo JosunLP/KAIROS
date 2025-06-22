@@ -595,10 +595,11 @@ export class SimpleCliService {
     }
 
     try {
-      const portfolio = await this.portfolioService.createPortfolioWithCapital(
+      const portfolio = await this.portfolioService.createPortfolio(
         name,
+        undefined,
         10000,
-      ); // Default: $10,000
+      );
       console.log('✅ Portfolio erstellt:');
       console.log(`📊 Name: ${portfolio.name}`);
       console.log(

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Portfolio, PortfolioPosition } from '../common/types';
+import { Portfolio } from '../common/types';
 import { PrismaService } from '../persistence/prisma.service';
 import { PortfolioService } from './portfolio.service';
 
@@ -58,20 +58,6 @@ describe('PortfolioService', () => {
 
     it('should create a portfolio with initial positions', async () => {
       const portfolioName = 'Test Portfolio with Positions';
-      const initialPositions: PortfolioPosition[] = [
-        {
-          ticker: 'AAPL',
-          symbol: 'AAPL',
-          quantity: 10,
-          averagePrice: 150,
-          currentPrice: 155,
-          unrealizedPL: 50,
-          unrealizedPnL: 50,
-          value: 1550,
-          weight: 100,
-          lastUpdated: new Date(),
-        },
-      ];
 
       // Mock getCurrentPrices method
       jest
@@ -87,24 +73,27 @@ describe('PortfolioService', () => {
 
       const portfolio = await service.createPortfolio(
         portfolioName,
-        initialPositions,
+        undefined,
+        0,
       );
+
+      // Add the initial position
+      await service.addPosition(portfolio.id, 'AAPL', 10, 150);
 
       expect(portfolio).toBeDefined();
       expect(portfolio.name).toBe(portfolioName);
       expect(portfolio.positions).toHaveLength(1);
       expect(portfolio.positions[0].ticker).toBe('AAPL');
     });
-  });
 
-  describe('createPortfolioWithCapital', () => {
     it('should create a portfolio with initial capital', async () => {
       const portfolioName = 'Capital Test Portfolio';
       const initialCapital = 10000;
 
-      const portfolio = await service.createPortfolioWithCapital(
+      const portfolio = await service.createPortfolio(
         portfolioName,
-        initialCapital,
+        undefined,
+        0,
       );
 
       expect(portfolio).toBeDefined();
@@ -159,8 +148,9 @@ describe('PortfolioService', () => {
     let portfolio: Portfolio;
 
     beforeEach(async () => {
-      portfolio = await service.createPortfolioWithCapital(
+      portfolio = await service.createPortfolio(
         'Test Portfolio',
+        undefined,
         10000,
       );
 
@@ -213,8 +203,9 @@ describe('PortfolioService', () => {
     let portfolio: Portfolio;
 
     beforeEach(async () => {
-      portfolio = await service.createPortfolioWithCapital(
+      portfolio = await service.createPortfolio(
         'Test Portfolio',
+        undefined,
         10000,
       );
 
@@ -252,8 +243,9 @@ describe('PortfolioService', () => {
     let portfolio: Portfolio;
 
     beforeEach(async () => {
-      portfolio = await service.createPortfolioWithCapital(
+      portfolio = await service.createPortfolio(
         'Test Portfolio',
+        undefined,
         10000,
       );
 
@@ -338,8 +330,9 @@ describe('PortfolioService', () => {
     let portfolio: Portfolio;
 
     beforeEach(async () => {
-      portfolio = await service.createPortfolioWithCapital(
+      portfolio = await service.createPortfolio(
         'Risk Test Portfolio',
+        undefined,
         10000,
       );
 

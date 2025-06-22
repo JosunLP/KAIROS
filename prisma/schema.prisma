@@ -13,7 +13,7 @@ model Stock {
   id     String @id @default(cuid())
   ticker String @unique
   name   String
-  
+
   // Zusätzliche Metadaten
   sector    String?
   industry  String?
@@ -22,8 +22,9 @@ model Stock {
   isActive  Boolean  @default(true)
 
   // Relationen
-  historicalData HistoricalData[]
-  predictions    Prediction[]
+  historicalData     HistoricalData[]
+  predictions        Prediction[]
+  portfolioPositions PortfolioPosition[]
 
   @@map("stocks")
 }
@@ -36,26 +37,26 @@ model HistoricalData {
   low       Float
   close     Float
   volume    BigInt
-  
+
   // Berechnete technische Indikatoren
-  sma20     Float?  // Simple Moving Average 20
-  ema50     Float?  // Exponential Moving Average 50
-  rsi14     Float?  // Relative Strength Index 14
-  macd      Float?  // MACD Line
+  sma20      Float? // Simple Moving Average 20
+  ema50      Float? // Exponential Moving Average 50
+  rsi14      Float? // Relative Strength Index 14
+  macd       Float? // MACD Line
   macdSignal Float? // MACD Signal Line
-  macdHist  Float?  // MACD Histogram
-  bollUpper Float?  // Bollinger Band Upper
-  bollLower Float?  // Bollinger Band Lower
-  bollMid   Float?  // Bollinger Band Middle
-  
+  macdHist   Float? // MACD Histogram
+  bollUpper  Float? // Bollinger Band Upper
+  bollLower  Float? // Bollinger Band Lower
+  bollMid    Float? // Bollinger Band Middle
+
   // Zusätzliche Indikatoren
-  adx       Float?  // Average Directional Index
-  cci       Float?  // Commodity Channel Index
-  williamsR Float?  // Williams %R
-  
+  adx       Float? // Average Directional Index
+  cci       Float? // Commodity Channel Index
+  williamsR Float? // Williams %R
+
   // Relation
-  stockId   String
-  stock     Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  stockId String
+  stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
 
   @@unique([stockId, timestamp]) // Verhindert Duplikate
   @@index([stockId, timestamp])
@@ -63,71 +64,214 @@ model HistoricalData {
 }
 
 model Prediction {
-  id          String   @id @default(cuid())
-  stockId     String
-  timestamp   DateTime @default(now())
-  
+  id        String   @id @default(cuid())
+  stockId   String
+  timestamp DateTime @default(now())
+
   // Vorhersagewerte
-  predictedPrice      Float?
-  predictedDirection  String?  // "UP", "DOWN", "NEUTRAL"
-  confidence          Float?   // 0.0 - 1.0
-  
+  predictedPrice     Float?
+  predictedDirection String? // "UP", "DOWN", "NEUTRAL"
+  confidence         Float? // 0.0 - 1.0
+
   // Zeithorizont der Vorhersage
-  horizonDays         Int      @default(1)
-  targetDate          DateTime
-  
+  horizonDays Int      @default(1)
+  targetDate  DateTime
+
   // Modell-Metadaten
-  modelVersion        String
-  features            String?  // JSON String der verwendeten Features
-  
+  modelVersion String
+  features     String? // JSON String der verwendeten Features
+
   // Validierung (wird später gefüllt)
-  actualPrice         Float?
-  actualDirection     String?
-  accuracy            Float?
-  
-  stock     Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
-  
+  actualPrice     Float?
+  actualDirection String?
+  accuracy        Float?
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
   @@index([stockId, timestamp])
   @@index([targetDate])
   @@map("predictions")
+}
+
+model Portfolio {
+  id           String  @id @default(cuid())
+  name         String
+  description  String?
+  initialValue Float   @default(0)
+  currentValue Float   @default(0)
+  cash         Float   @default(0)
+
+  // Performance-Metriken
+  totalReturn Float  @default(0)
+  dailyReturn Float  @default(0)
+  sharpeRatio Float?
+  maxDrawdown Float?
+  volatility  Float?
+
+  // Status
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationen
+  positions       PortfolioPosition[]
+  trades          PortfolioTrade[]
+  riskAssessments RiskAssessment[]
+
+  @@map("portfolios")
+}
+
+model PortfolioPosition {
+  id          String @id @default(cuid())
+  portfolioId String
+  stockId     String
+  ticker      String
+
+  // Position-Details
+  quantity      Int
+  averagePrice  Float
+  currentPrice  Float?
+  unrealizedPnL Float  @default(0)
+  value         Float  @default(0)
+  weight        Float  @default(0)
+
+  // Metadaten
+  sector      String?
+  lastUpdated DateTime @default(now())
+
+  // Relationen
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  stock     Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, ticker])
+  @@index([portfolioId])
+  @@index([ticker])
+  @@map("portfolio_positions")
+}
+
+model PortfolioTrade {
+  id          String @id @default(cuid())
+  portfolioId String
+  ticker      String
+
+  // Trade-Details
+  type       String // "BUY", "SELL"
+  quantity   Int
+  price      Float
+  commission Float  @default(0)
+  slippage   Float  @default(0)
+
+  // Performance
+  return        Float @default(0)
+  holdingPeriod Int?
+
+  // Timestamps
+  entryDate DateTime?
+  exitDate  DateTime?
+  timestamp DateTime  @default(now())
+
+  // Relation
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([ticker])
+  @@index([timestamp])
+  @@map("portfolio_trades")
+}
+
+model RiskAssessment {
+  id          String   @id @default(cuid())
+  portfolioId String
+  timestamp   DateTime @default(now())
+
+  // Risk-Metriken
+  riskScore Float
+  riskLevel String // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+
+  // Detaillierte Metriken (JSON)
+  metrics String // JSON String mit RiskMetrics
+
+  // Compliance
+  isCompliant Boolean @default(true)
+  violations  Int     @default(0)
+
+  // Relation
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([timestamp])
+  @@map("risk_assessments")
 }
 
 model Configuration {
   id    String @id @default(cuid())
   key   String @unique
   value String
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("configurations")
 }
 
 model TrainingLog {
-  id            String   @id @default(cuid())
-  timestamp     DateTime @default(now())
-  modelVersion  String
-  
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  modelVersion String
+
   // Training-Metriken
-  loss          Float?
-  accuracy      Float?
-  valLoss       Float?
-  valAccuracy   Float?
-  
+  loss        Float?
+  accuracy    Float?
+  valLoss     Float?
+  valAccuracy Float?
+
   // Training-Parameter
-  epochs        Int?
-  batchSize     Int?
-  learningRate  Float?
-  
+  epochs       Int?
+  batchSize    Int?
+  learningRate Float?
+
   // Daten-Metadaten
-  trainingSize  Int?
-  testSize      Int?
-  features      String?  // JSON String
-  
+  trainingSize Int?
+  testSize     Int?
+  features     String? // JSON String
+
   // Status
-  status        String   @default("COMPLETED") // STARTED, COMPLETED, FAILED
-  errorMessage  String?
-  
+  status       String  @default("COMPLETED") // STARTED, COMPLETED, FAILED
+  errorMessage String?
+
   @@index([timestamp])
   @@map("training_logs")
+}
+
+model SystemEvent {
+  id        String   @id @default(cuid())
+  type      String
+  component String
+  severity  String // "INFO", "WARNING", "ERROR", "CRITICAL"
+  message   String
+  payload   String? // JSON String
+  timestamp DateTime @default(now())
+
+  @@index([type])
+  @@index([component])
+  @@index([severity])
+  @@index([timestamp])
+  @@map("system_events")
+}
+
+model ApiRequest {
+  id           String   @id @default(cuid())
+  provider     String
+  endpoint     String
+  method       String
+  statusCode   Int?
+  duration     Int? // in milliseconds
+  timestamp    DateTime @default(now())
+  success      Boolean  @default(true)
+  errorMessage String?
+
+  @@index([provider])
+  @@index([timestamp])
+  @@index([success])
+  @@map("api_requests")
 }

@@ -1,16 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../persistence/prisma.service';
+import * as tf from '@tensorflow/tfjs';
+import * as fs from 'fs';
+import * as path from 'path';
+import { PredictionResult, TrainingStatus } from '../common/types';
 import { DataIngestionService } from '../data-ingestion/data-ingestion.service';
+import { PrismaService } from '../persistence/prisma.service';
 import {
   MLClientService,
   TrainingData as MLTrainingData,
   PredictionRequest,
 } from './ml-client.service';
-import { PredictionResult, TrainingStatus } from '../common/types';
-import * as tf from '@tensorflow/tfjs';
-import * as fs from 'fs';
-import * as path from 'path';
 
 export interface TrainingData {
   features: number[][];
@@ -986,7 +986,7 @@ export class MlPredictionService {
    */
   async trainModelWithMLService(
     ticker: string,
-    modelName?: string,
+    _modelName?: string,
   ): Promise<any> {
     try {
       this.logger.log(`Training Modell für ${ticker} mit ML-Service...`);
@@ -1001,15 +1001,16 @@ export class MlPredictionService {
 
       const mlTrainingData: MLTrainingData = {
         features: trainingData.features,
-        target: trainingData.labels,
-        model_name: modelName || `${ticker}_model_${Date.now()}`,
+        labels: trainingData.labels,
       };
 
-      // Trainiere Modell
-      const result = await this.mlClientService.trainModel(mlTrainingData);
+      const result = await this.mlClientService.trainModel(
+        ticker,
+        mlTrainingData,
+      );
 
       this.logger.log(
-        `Modell für ${ticker} erfolgreich trainiert: ${result.message}`,
+        `Modell für ${ticker} erfolgreich trainiert: ${result.status}`,
       );
       return result;
     } catch (error) {
@@ -1036,28 +1037,27 @@ export class MlPredictionService {
       const predictionFeatures =
         features || (await this.prepareFeaturesForPrediction(ticker));
 
-      const predictionRequest: PredictionRequest = {
+      const request: PredictionRequest = {
+        ticker,
         features: predictionFeatures,
-        model_name: modelName,
+        modelName: modelName || `${ticker}_model`,
       };
 
-      // Mache Vorhersage
-      const response = await this.mlClientService.predict(predictionRequest);
+      const response = await this.mlClientService.predict(request);
 
-      // Konvertiere zu PredictionResult Format
-      const predictionResult: PredictionResult = {
+      const result: PredictionResult = {
         symbol: ticker,
-        prediction: response.predictions[0],
-        confidence: 0.8, // Placeholder - könnte vom ML-Service kommen
-        timestamp: new Date(response.timestamp),
-        model: modelName,
-        features: {}, // Leeres Objekt für Features
+        prediction: response.prediction,
+        confidence: response.confidence || 0.5,
+        timestamp: new Date(),
+        model: response.model || 'ml-service',
+        features: {},
       };
 
       this.logger.log(
-        `Vorhersage für ${ticker} erfolgreich: ${response.predictions[0]}`,
+        `Vorhersage für ${ticker} erfolgreich: ${response.prediction}`,
       );
-      return predictionResult;
+      return result;
     } catch (error) {
       this.logger.error(
         `Fehler bei Vorhersage mit ML-Service für ${ticker}:`,
@@ -1073,11 +1073,13 @@ export class MlPredictionService {
   async listAvailableMLModels(): Promise<any> {
     try {
       const models = await this.mlClientService.listModels();
-      this.logger.log(`${models.total} Modelle verfügbar im ML-Service`);
-      return models;
+      return {
+        models,
+        count: models.length,
+      };
     } catch (error) {
-      this.logger.error('Fehler beim Abrufen der ML-Modelle:', error);
-      throw error;
+      this.logger.error('Fehler beim Abrufen der verfügbaren Modelle:', error);
+      return { models: [], count: 0 };
     }
   }
 

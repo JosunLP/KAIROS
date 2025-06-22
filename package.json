@@ -79,8 +79,10 @@
     "@nestjs/core": "^10.3.2",
     "@nestjs/platform-express": "^10.3.2",
     "@nestjs/schedule": "^4.0.1",
+    "@nestjs/websockets": "^10.4.19",
     "@prisma/client": "^5.10.2",
     "@tensorflow/tfjs": "^4.17.0",
+    "@types/socket.io": "^3.0.1",
     "axios": "^1.6.7",
     "axios-retry": "^4.0.0",
     "commander": "^12.0.0",
@@ -89,6 +91,7 @@
     "node-cron": "^3.0.3",
     "reflect-metadata": "^0.2.1",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.1",
     "technicalindicators": "^3.1.0",
     "winston": "^3.11.0"
   },
